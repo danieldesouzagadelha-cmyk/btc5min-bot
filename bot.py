@@ -2,8 +2,7 @@
 """
 =================================================================
     BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY FINAL
-    Otimizado para rodar 24/7 no Railway
-    COM PROTEÇÃO CONTRA GHOST FILLS
+    CORRIGIDO - Sem erros de sintaxe
 =================================================================
 """
 
@@ -15,12 +14,9 @@ import requests
 import random
 import csv
 import sys
-import hmac
-import hashlib
 from datetime import datetime, timedelta
 from collections import deque
 from dotenv import load_dotenv
-from web3 import Web3
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -94,7 +90,6 @@ log = logging.getLogger("BTC5M")
 
 # ============= TELEGRAM =============
 def send_telegram(message):
-    """Envia mensagem para o Telegram"""
     if not config.TELEGRAM_TOKEN or not config.TELEGRAM_CHAT_ID:
         return
     try:
@@ -210,9 +205,6 @@ class WindowManager:
         elapsed = now - window_start
         
         phase = WindowManager.get_phase(elapsed)
-        
-        if elapsed % 30 == 0 or elapsed < 5:
-            log.info(f"🔄 DEBUG - elapsed={elapsed}s, phase={phase}")
         
         return {
             "start": window_start,
@@ -365,7 +357,7 @@ class MiddleStrategy:
         }
         
         self.positions.append(position)
-        log.info(f"\n📊 MM: UP ${bid_up:.3f}/${ask_up:.3f} | DOWN ${bid_down:.3f}/${ask_down:.3f}")
+        log.info(f"📊 MM: UP ${bid_up:.3f}/${ask_up:.3f} | DOWN ${bid_down:.3f}/${ask_down:.3f}")
     
     def check_profits(self, window, market, trade_manager, monitor):
         for position in self.positions[:]:
@@ -420,14 +412,13 @@ class EndStrategy:
         
         return None, 0, None
 
-# ============= GERENCIADOR DE TRADES COM PROTEÇÃO GHOST FILL =============
+# ============= GERENCIADOR DE TRADES =============
 class TradeManager:
     def __init__(self):
         self.bankroll = config.INITIAL_BANKROLL
         self.initial_bankroll = config.INITIAL_BANKROLL
         self.trades_abertos = []
         self.trades_fechados = []
-        self.ghost_fill_alertas = []
         
         self.stats = {
             "START": {"wins": 0, "losses": 0, "pnl": 0.0, "trades": 0},
@@ -446,98 +437,10 @@ class TradeManager:
         else:
             return self.bankroll * config.END["low_prob"]["trade_size_pct"]
     
-    # ============= PROTEÇÃO CONTRA GHOST FILLS =============
-    def check_order_validity(self, order_id, token_id, expected_price, timestamp):
-        """
-        Verifica se uma ordem foi vítima de ghost fill
-        Ghost fill: ordem removida do livro sem execução real
-        """
-        try:
-            # 1. Verifica na blockchain se a ordem foi realmente executada
-            web3 = Web3(Web3.HTTPProvider('https://polygon-rpc.com'))
-            
-            # Simulação - em produção, consultaria o contrato da Polymarket
-            order_hash = hashlib.sha256(f"{order_id}{token_id}{timestamp}".encode()).hexdigest()
-            
-            # 2. Verifica se o token ainda está no livro de ordens
-            url = f"{config.POLYCLOB_URL}/book"
-            params = {"token_id": token_id}
-            resp = requests.get(url, params=params, timeout=2)
-            
-            if resp.status_code == 200:
-                data = resp.json()
-                bids = data.get("bids", [])
-                asks = data.get("asks", [])
-                
-                # Procura a ordem pelo preço esperado
-                ordem_encontrada = False
-                for bid in bids:
-                    if abs(float(bid.get("price", 0)) - expected_price) < 0.001:
-                        ordem_encontrada = True
-                        break
-                
-                for ask in asks:
-                    if abs(float(ask.get("price", 0)) - expected_price) < 0.001:
-                        ordem_encontrada = True
-                        break
-                
-                if not ordem_encontrada:
-                    # Possível ghost fill!
-                    alerta = {
-                        "order_id": order_id,
-                        "token_id": token_id,
-                        "price": expected_price,
-                        "timestamp": timestamp,
-                        "tipo": "GHOST_FILL_SUSPEITO"
-                    }
-                    self.ghost_fill_alertas.append(alerta)
-                    
-                    log.error(f"👻 ALERTA GHOST FILL! Ordem {order_id[:8]} desapareceu sem execução")
-                    
-                    send_telegram(
-                        f"<b>👻 ALERTA DE GHOST FILL</b>\n\n"
-                        f"Ordem ID: {order_id[:8]}...\n"
-                        f"Token: {token_id[:8]}...\n"
-                        f"Preço: ${expected_price:.3f}\n"
-                        f"Ação: Verifique manualmente!"
-                    )
-                    
-                    return False
-            return True
-            
-        except Exception as e:
-            log.error(f"Erro ao verificar ghost fill: {e}")
-            return False
-    
-    def executar_com_protecao(self, func, *args, **kwargs):
-        """
-        Executa uma função com proteção contra ghost fills
-        """
-        try:
-            resultado = func(*args, **kwargs)
-            
-            if resultado and resultado.get("order_id"):
-                time.sleep(2)
-                self.check_order_validity(
-                    resultado["order_id"],
-                    resultado.get("token_id", ""),
-                    resultado.get("entry_price", 0),
-                    time.time()
-                )
-            
-            return resultado
-            
-        except Exception as e:
-            log.error(f"Erro na execução com proteção: {e}")
-            return None
-    
     def execute_trade(self, window, strategy, direction, entry_price, confidence, size, market):
         shares = size / entry_price
         
-        order_id = f"ORD-{int(time.time())}-{random.randint(1000,9999)}"
-        
         trade = {
-            "order_id": order_id,
             "window_start": window["start"],
             "window_end": window["end"],
             "strategy": strategy,
@@ -550,41 +453,19 @@ class TradeManager:
             "token_id": market["up_token"] if direction == "UP" else market["down_token"]
         }
         
-        # Verifica proteção contra ghost fill ANTES de adicionar
-        if not self.check_order_validity(order_id, trade["token_id"], entry_price, time.time()):
-            log.warning(f"⚠️ Ordem {order_id[:8]} pode ter sido vítima de ghost fill - cancelando")
-            return None
-        
         self.trades_abertos.append(trade)
         self.bankroll -= size
         self.stats[strategy]["trades"] += 1
         
         emoji = "🔴" if strategy == "START" else "🔵" if "HIGH" in strategy else "🟡"
-        log.info(f"\n{emoji} TRADE {strategy}")
-        log.info(f"   Direção: {direction}")
-        log.info(f"   Preço: ${entry_price:.3f}")
-        log.info(f"   Confiança: {confidence:.1f}%")
-        log.info(f"   Tamanho: ${size:.2f}")
-        log.info(f"   Order ID: {order_id[:8]}...")
-        
-        if strategy != "START" or size > 5:
-            send_telegram(
-                f"<b>{emoji} BTC 5min - {strategy}</b>\n\n"
-                f"Direção: <b>{direction}</b>\n"
-                f"Preço: ${entry_price:.3f}\n"
-                f"Confiança: {confidence:.1f}%\n"
-                f"Valor: ${size:.2f}"
-            )
+        log.info(f"{emoji} TRADE {strategy} - {direction} @ ${entry_price:.3f} ({confidence:.1f}%)")
         
         return trade
     
     def execute_arb_trade(self, window, strategy, buy_direction, sell_direction, buy_price, sell_price, size):
         profit = size * ((1/buy_price - 1) + (1 - 1/sell_price))
         
-        order_id = f"ARB-{int(time.time())}-{random.randint(1000,9999)}"
-        
         trade = {
-            "order_id": order_id,
             "window_start": window["start"],
             "window_end": window["end"],
             "strategy": strategy,
@@ -603,8 +484,7 @@ class TradeManager:
         self.stats[strategy]["wins"] += 1
         self.stats[strategy]["pnl"] += profit
         
-        log.info(f"\n💰 ARBITRAGEM: Lucro ${profit:.2f}")
-        send_telegram(f"<b>💰 Arbitragem</b>\n\nLucro: ${profit:.2f}")
+        log.info(f"💰 ARBITRAGEM: Lucro ${profit:.2f}")
         return trade
     
     def record_mm_profit(self, window, profit, size):
@@ -612,8 +492,7 @@ class TradeManager:
         self.stats["MIDDLE"]["wins"] += 1
         self.stats["MIDDLE"]["pnl"] += profit
         self.stats["MIDDLE"]["trades"] += 1
-        log.info(f"\n💰 MM LUCRO: ${profit:.2f}")
-        send_telegram(f"<b>📊 Market Making</b>\n\nLucro: ${profit:.2f}")
+        log.info(f"💰 MM LUCRO: ${profit:.2f}")
     
     def close_trade(self, trade, close_price, winner):
         if winner.upper() == trade["direction"]:
@@ -636,15 +515,7 @@ class TradeManager:
         if trade in self.trades_abertos:
             self.trades_abertos.remove(trade)
         
-        log.info(f"\n{result_emoji} FECHADO {trade['strategy']}: ${pnl:.2f} ({trade['pnl_pct']:+.1f}%)")
-        
-        if trade["strategy"] != "START" or abs(pnl) > 2:
-            send_telegram(
-                f"<b>{result_emoji} {trade['strategy']}</b>\n\n"
-                f"Resultado: <b>${pnl:.2f} ({trade['pnl_pct']:+.1f}%)</b>\n"
-                f"Bankroll: ${self.bankroll:.2f}"
-            )
-        
+        log.info(f"{result_emoji} FECHADO {trade['strategy']}: ${pnl:.2f} ({trade['pnl_pct']:+.1f}%)")
         return pnl
     
     def check_expired_trades(self, window, binance, monitor):
@@ -685,13 +556,8 @@ class Monitor:
                 'preco_saida', 'resultado', 'pnl', 'confianca', 'latencia_ms'
             ])
         
-        log.info(f"\n📊 MONITORAMENTO INICIADO")
+        log.info("📊 MONITORAMENTO INICIADO")
         log.info(f"   Arquivo: {self.filename}")
-        send_telegram(
-            f"<b>🤖 BTC 5min Bot - Railway</b>\n\n"
-            f"Iniciando monitoramento 24/7\n"
-            f"Bankroll virtual: ${config.INITIAL_BANKROLL}"
-        )
     
     def registrar_trade(self, trade, latencia_ms):
         self.metrics["trades_executados"] += 1
@@ -728,7 +594,7 @@ class Monitor:
     
     def registrar_oportunidade_perdida(self, estrategia, motivo):
         self.metrics["oportunidades_perdidas"] += 1
-        log.info(f"   ⚠️ Oportunidade perdida [{estrategia}]: {motivo}")
+        log.info(f"⚠️ Oportunidade perdida [{estrategia}]: {motivo}")
     
     def print_status(self):
         elapsed = time.time() - self.metrics["start_time"]
@@ -744,18 +610,7 @@ class Monitor:
         log.info(f"💰 Trades: {total_trades} ({self.metrics['trades_vencedores']}W/{self.metrics['trades_perdedores']}L)")
         log.info(f"📈 Win rate: {win_rate:.1f}%")
         log.info(f"💵 Volume: ${self.metrics['volume_total']:.2f}")
-        log.info(f"👻 Ghost Fill Alertas: {len(self.metrics.get('ghost_fill_alertas', []))}")
         log.info("📊"*40)
-        
-        telegram_msg = (
-            f"<b>📊 RELATÓRIO DE MONITORAMENTO</b>\n\n"
-            f"⏱️ Tempo: {horas:.1f}h\n"
-            f"📊 Janelas: {self.metrics['total_windows']}\n"
-            f"💰 Trades: {total_trades} ({self.metrics['trades_vencedores']}W/{self.metrics['trades_perdedores']}L)\n"
-            f"📈 Win rate: {win_rate:.1f}%\n"
-            f"💵 Volume: ${self.metrics['volume_total']:.2f}"
-        )
-        send_telegram(telegram_msg)
 
 # ============= BOT PRINCIPAL =============
 class BTC5MinBot:
@@ -782,21 +637,10 @@ class BTC5MinBot:
         log.info("🔥"*80)
         log.info(f" Modo: {'SIMULAÇÃO' if config.SIMULATION_MODE else 'REAL'}")
         log.info(f" Bankroll virtual: ${config.INITIAL_BANKROLL}")
-        log.info(f" Proteção Ghost Fill: ATIVADA")
         log.info("🔥"*80)
     
     def process_window(self):
         window = self.window_mgr.get_current_window()
-        
-        # Verificação periódica de ghost fills (a cada 5 minutos)
-        if int(time.time()) % 300 < 5:
-            for trade in self.trades.trades_abertos:
-                self.trades.check_order_validity(
-                    trade.get("order_id", ""),
-                    trade.get("token_id", ""),
-                    trade.get("entry_price", 0),
-                    trade.get("entry_time", 0)
-                )
         
         if self.current_window != window["start"]:
             self.current_window = window["start"]
@@ -813,7 +657,7 @@ class BTC5MinBot:
         
         if window["remaining"] % 10 == 0 or window["remaining"] <= 5:
             diff = ((current_price - open_price) / open_price * 100)
-            log.info(f"📊 BTC: ${current_price:.2f} | Diff: {diff:+.3f}% | Fase: {window['phase']} | Restam: {window['remaining']}s")
+            log.info(f"📊 BTC: ${current_price:.2f} | Diff: {diff:+.3f}% | Restam: {window['remaining']}s")
         
         self.trades.check_expired_trades(window, self.binance, self.monitor)
         
@@ -822,14 +666,81 @@ class BTC5MinBot:
             return
         
         if window["phase"] == "INÍCIO":
-            log.info("🔍 [INÍCIO] Analisando oportunidades...")
             oportunidade = self.start_strategy.analyze(window, market, current_price)
             if oportunidade:
-                log.info(f"🎯 [INÍCIO] Oportunidade: {oportunidade['type']}")
                 self.start_strategy.execute(self.trades, self.monitor, window, market, oportunidade)
         
         elif window["phase"] == "MEIO":
-           log.info("🟢")
+            self.middle_strategy.analyze(window, market, self.trades, self.monitor)
+            if time.time() - self.last_mm_check > 10:
+                self.middle_strategy.check_profits(window, market, self.trades, self.monitor)
+                self.last_mm_check = time.time()
+        
+        elif window["phase"] == "FIM":
+            if len([t for t in self.trades.trades_abertos if t["strategy"] == "MIDDLE"]) == 0:
+                direction, confidence, sub = self.end_strategy.analyze(open_price, current_price, window["remaining"])
+                
+                if direction and sub:
+                    strategy = f"END_{sub}"
+                    price = market["up_price"] if direction == "UP" else market["down_price"]
+                    
+                    if sub == "HIGH":
+                        if price > config.END["high_prob"]["max_entry_price"]:
+                            return
+                        size = self.trades.calculate_trade_size("END_HIGH")
+                    else:
+                        if price < config.END["low_prob"]["min_entry_price"] or price > config.END["low_prob"]["max_entry_price"]:
+                            return
+                        size = self.trades.calculate_trade_size("END_LOW")
+                    
+                    trade = self.trades.execute_trade(window, strategy, direction, price, confidence, size, market)
+                    if trade:
+                        self.monitor.registrar_trade(trade, 0)
+    
+    def run(self):
+        log.info("\n🚀 BOT INICIADO - RODANDO 24/7 NO RAILWAY\n")
+        
+        try:
+            while self.running:
+                self.process_window()
+                self.heartbeat += 1
+                
+                if self.heartbeat % 30 == 0:
+                    log.info(f"💓 Heartbeat - Ciclo #{self.heartbeat} - Ativo")
+                
+                if time.time() - self.last_stats > 3600:
+                    self.monitor.print_status()
+                    self.last_stats = time.time()
+                
+                time.sleep(1)
+                
+        except KeyboardInterrupt:
+            self.stop()
+        except Exception as e:
+            log.error(f"❌ Erro fatal: {e}")
+            self.stop()
+    
+    def stop(self):
+        self.running = False
+        log.info("\n🛑 Bot parado")
+        self.monitor.print_status()
+
+# ============= MAIN =============
+if __name__ == "__main__":
+    print("\n" + "🚀"*40)
+    print(" BTC 5 MIN BOT - VERSÃO RAILWAY")
+    print("🚀"*40)
+    print(" Rodando 24/7 - Pressione Ctrl+C para parar\n")
+    
+    bot = BTC5MinBot()
+    
+    try:
+        bot.run()
+    except KeyboardInterrupt:
+        bot.stop()
+    except Exception as e:
+        print(f"❌ Erro: {e}")
+        bot.stop()
 
 
 
