@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-=================================================================
-    BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY
-    Otimizado para rodar 24/7 no Railway
-    Versão CORRIGIDA - WindowManager funcionando
-=================================================================
+===========================================
+BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY
+Otimizado para rodar 24/7 no Railway
+Versão CORRIGIDA - windowManager funcionando
+===========================================
 """
 
 import os
@@ -17,27 +17,39 @@ import csv
 from datetime import datetime, timedelta
 from collections import deque
 from dotenv import load_dotenv
+import sys  # <-- VOCÊ PRECISA ADICIONAR ESTA LINHA TAMBÉM!
+
+# ============= DEBUG INICIAL =============
+print("\n" + "🔥"*50)
+print("🚀 INICIANDO BOT - MODO DEBUG ATIVADO")
+print("🔥"*50)
+print(f"Arquivo: {__file__}")
+print(f"Hora: {datetime.now()}")
+print(f"Python version: {sys.version}")
+print("="*50)
+# ========================================
 
 # Carrega variáveis de ambiente
 load_dotenv()
 
-# ============= CONFIGURAÇÕES =============
+# ================== CONFIGURAÇÕES ==================
+
 class Config:
     # Modo de operação
     SIMULATION_MODE = os.getenv("SIMULATION_MODE", "true").lower() == "true"
-    
+
     # Banca virtual
     INITIAL_BANKROLL = float(os.getenv("INITIAL_BANKROLL", "100.0"))
-    
-    # ===== ESTRATÉGIA DE INÍCIO (0-60s) =====
+
+    # ======= ESTRATÉGIA DE INÍCIO (0-60s) =======
     START = {
-        "active": True,
-        "window": [0, 60],
-        "trade_size_pct": 0.005,
-        "min_spread": 0.02,
-        "max_trades_per_window": 3,
-        "profit_target": 0.02,
-        "stop_loss": 0.01
+    "active": True,
+    "window": [0, 60],
+    "trade_size_pct": 0.005,
+    "min_spread": 0.02,
+    "max_trades_per_window": 3,
+    "profit_target": 0.02,
+    "stop_loss": 0.01
     }
     
     # ===== ESTRATÉGIA DE MEIO (60-240s) =====
@@ -786,19 +798,20 @@ class BTC5MinBot:
         send_telegram(f"<b>🛑 Bot parado</b>\n\nBankroll final: ${self.trades.bankroll:.2f}")
 
 # ============= MAIN =============
+# ============= MAIN =============
 if __name__ == "__main__":
-    print("\n" + "🚀"*40)
-    print(" BTC 5 MIN BOT - VERSÃO RAILWAY")
-    print("🚀"*40)
-    print(" Rodando 24/7 - Pressione Ctrl+C para parar\n")
-    
-    bot = BTC5MinBot()
-    
     try:
+        print("\n" + "🚀"*40)
+        print(" BTC 5 MIN BOT - VERSÃO RAILWAY")
+        print("🚀"*40)
+        print(" Rodando 24/7 - Pressione Ctrl+C para parar\n")
+        
+        bot = BTC5MinBot()
         bot.run()
-    except KeyboardInterrupt:
-        bot.stop()
     except Exception as e:
-        print(f"❌ Erro: {e}")
-        bot.stop()
+        print(f"❌ ERRO FATAL: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\n🔴 BOT CRASHOU - Verifique os erros acima")
+
 
