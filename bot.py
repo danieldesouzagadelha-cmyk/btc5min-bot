@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-===========================================
-BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY
-Otimizado para rodar 24/7 no Railway
-Versão CORRIGIDA - windowManager funcionando
-===========================================
+=================================================================
+    BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY FINAL
+    Otimizado para rodar 24/7 no Railway
+    WindowManager CORRIGIDO - Fases funcionando
+=================================================================
 """
 
 import os
@@ -14,42 +14,31 @@ import logging
 import requests
 import random
 import csv
+import sys
 from datetime import datetime, timedelta
 from collections import deque
 from dotenv import load_dotenv
-import sys  # <-- VOCÊ PRECISA ADICIONAR ESTA LINHA TAMBÉM!
-
-# ============= DEBUG INICIAL =============
-print("\n" + "🔥"*50)
-print("🚀 INICIANDO BOT - MODO DEBUG ATIVADO")
-print("🔥"*50)
-print(f"Arquivo: {__file__}")
-print(f"Hora: {datetime.now()}")
-print(f"Python version: {sys.version}")
-print("="*50)
-# ========================================
 
 # Carrega variáveis de ambiente
 load_dotenv()
 
-# ================== CONFIGURAÇÕES ==================
-
+# ============= CONFIGURAÇÕES =============
 class Config:
     # Modo de operação
     SIMULATION_MODE = os.getenv("SIMULATION_MODE", "true").lower() == "true"
-
+    
     # Banca virtual
     INITIAL_BANKROLL = float(os.getenv("INITIAL_BANKROLL", "100.0"))
-
-    # ======= ESTRATÉGIA DE INÍCIO (0-60s) =======
+    
+    # ===== ESTRATÉGIA DE INÍCIO (0-60s) =====
     START = {
-    "active": True,
-    "window": [0, 60],
-    "trade_size_pct": 0.005,
-    "min_spread": 0.02,
-    "max_trades_per_window": 3,
-    "profit_target": 0.02,
-    "stop_loss": 0.01
+        "active": True,
+        "window": [0, 60],
+        "trade_size_pct": 0.005,
+        "min_spread": 0.02,
+        "max_trades_per_window": 3,
+        "profit_target": 0.02,
+        "stop_loss": 0.01
     }
     
     # ===== ESTRATÉGIA DE MEIO (60-240s) =====
@@ -217,12 +206,18 @@ class WindowManager:
         window_end = window_start + 300
         elapsed = now - window_start
         
+        phase = WindowManager.get_phase(elapsed)
+        
+        # Log de debug para ver as fases
+        if elapsed % 30 == 0 or elapsed < 5:
+            log.info(f"🔄 DEBUG - elapsed={elapsed}s, phase={phase}")
+        
         return {
             "start": window_start,
             "end": window_end,
             "remaining": window_end - now,
             "elapsed": elapsed,
-            "phase": WindowManager.get_phase(elapsed),
+            "phase": phase,
             "start_dt": datetime.fromtimestamp(window_start),
             "end_dt": datetime.fromtimestamp(window_end)
         }
@@ -651,7 +646,6 @@ class Monitor:
         log.info(f"💵 Volume: ${self.metrics['volume_total']:.2f}")
         log.info("📊"*40)
         
-        # Envia relatório para o Telegram
         telegram_msg = (
             f"<b>📊 RELATÓRIO DE MONITORAMENTO</b>\n\n"
             f"⏱️ Tempo: {horas:.1f}h\n"
@@ -705,7 +699,7 @@ class BTC5MinBot:
         if not open_price or not current_price:
             return
         
-        # Log periódico a cada 10 segundos
+        # Log a cada 10 segundos
         if window["remaining"] % 10 == 0 or window["remaining"] <= 5:
             diff = ((current_price - open_price) / open_price * 100)
             log.info(f"📊 BTC: ${current_price:.2f} | Diff: {diff:+.3f}% | Fase: {window['phase']} | Restam: {window['remaining']}s")
@@ -718,10 +712,10 @@ class BTC5MinBot:
         
         # Estratégia de INÍCIO
         if window["phase"] == "INÍCIO":
-            log.info("🔍 [INÍCIO] Analisando oportunidades de scalp...")
+            log.info("🔍 [INÍCIO] Analisando oportunidades...")
             oportunidade = self.start_strategy.analyze(window, market, current_price)
             if oportunidade:
-                log.info(f"🎯 [INÍCIO] Oportunidade detectada: {oportunidade['type']}")
+                log.info(f"🎯 [INÍCIO] Oportunidade: {oportunidade['type']}")
                 self.start_strategy.execute(self.trades, self.monitor, window, market, oportunidade)
         
         # Estratégia de MEIO
@@ -736,7 +730,6 @@ class BTC5MinBot:
         elif window["phase"] == "FIM":
             log.info(f"🔍 [FIM] Analisando últimos {window['remaining']}s...")
             
-            # Só analisa se não tiver trade do meio
             if len([t for t in self.trades.trades_abertos if t["strategy"] == "MIDDLE"]) == 0:
                 direction, confidence, sub = self.end_strategy.analyze(open_price, current_price, window["remaining"])
                 
@@ -744,27 +737,24 @@ class BTC5MinBot:
                     strategy = f"END_{sub}"
                     price = market["up_price"] if direction == "UP" else market["down_price"]
                     
-                    log.info(f"🎯 [FIM] Oportunidade {sub} detectada: {direction} com {confidence:.1f}% confiança")
+                    log.info(f"🎯 [FIM] Oportunidade {sub}: {direction} ({confidence:.1f}%)")
                     
                     if sub == "HIGH":
                         if price > config.END["high_prob"]["max_entry_price"]:
-                            log.info(f"   ⚠️ Preço {price:.3f} acima do limite {config.END['high_prob']['max_entry_price']}")
+                            log.info(f"   ⚠️ Preço {price:.3f} acima do limite")
                             return
                         size = self.trades.calculate_trade_size("END_HIGH")
                     else:
                         if price < config.END["low_prob"]["min_entry_price"] or price > config.END["low_prob"]["max_entry_price"]:
-                            log.info(f"   ⚠️ Preço {price:.3f} fora do range {config.END['low_prob']['min_entry_price']}-{config.END['low_prob']['max_entry_price']}")
+                            log.info(f"   ⚠️ Preço {price:.3f} fora do range")
                             return
                         size = self.trades.calculate_trade_size("END_LOW")
                     
                     trade = self.trades.execute_trade(window, strategy, direction, price, confidence, size, market)
                     if trade:
                         self.monitor.registrar_trade(trade, 0)
-                else:
-                    log.info("   ⚠️ Nenhuma oportunidade clara no FIM")
     
     def run(self):
-        """Loop infinito para rodar no Railway"""
         log.info("\n🚀 BOT INICIADO - RODANDO 24/7 NO RAILWAY\n")
         
         try:
@@ -772,11 +762,9 @@ class BTC5MinBot:
                 self.process_window()
                 self.heartbeat += 1
                 
-                # Heartbeat a cada 30 segundos
                 if self.heartbeat % 30 == 0:
                     log.info(f"💓 Heartbeat - Ciclo #{self.heartbeat} - Ativo")
                 
-                # Relatório a cada hora
                 if time.time() - self.last_stats > 3600:
                     self.monitor.print_status()
                     self.last_stats = time.time()
@@ -798,20 +786,20 @@ class BTC5MinBot:
         send_telegram(f"<b>🛑 Bot parado</b>\n\nBankroll final: ${self.trades.bankroll:.2f}")
 
 # ============= MAIN =============
-# ============= MAIN =============
 if __name__ == "__main__":
+    print("\n" + "🚀"*40)
+    print(" BTC 5 MIN BOT - VERSÃO RAILWAY")
+    print("🚀"*40)
+    print(" Rodando 24/7 - Pressione Ctrl+C para parar\n")
+    
+    bot = BTC5MinBot()
+    
     try:
-        print("\n" + "🚀"*40)
-        print(" BTC 5 MIN BOT - VERSÃO RAILWAY")
-        print("🚀"*40)
-        print(" Rodando 24/7 - Pressione Ctrl+C para parar\n")
-        
-        bot = BTC5MinBot()
         bot.run()
+    except KeyboardInterrupt:
+        bot.stop()
     except Exception as e:
-        print(f"❌ ERRO FATAL: {e}")
-        import traceback
-        traceback.print_exc()
-        print("\n🔴 BOT CRASHOU - Verifique os erros acima")
+        print(f"❌ Erro: {e}")
+        bot.stop()
 
 
