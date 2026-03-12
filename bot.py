@@ -3,6 +3,7 @@
 =================================================================
     BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY
     Otimizado para rodar 24/7 no Railway
+    Versão FINAL CORRIGIDA
 =================================================================
 """
 
@@ -655,6 +656,7 @@ class BTC5MinBot:
         self.current_window = None
         self.last_mm_check = 0
         self.last_stats = time.time()
+        self.heartbeat = 0
         
         log.info("\n" + "🔥"*80)
         log.info(" BTC 5 MIN BOT v3.0 - RAILWAY EDITION")
@@ -671,6 +673,7 @@ class BTC5MinBot:
             self.monitor.metrics["total_windows"] += 1
             log.info(f"\n{'='*80}")
             log.info(f"⏰ JANELA #{self.monitor.metrics['total_windows']}: {self.window_mgr.format_time(window['start'])} - {self.window_mgr.format_time(window['end'])}")
+            log.info(f"📊 Fase: {window['phase']} | Restam: {window['remaining']}s")
         
         open_price = self.binance.get_price_at(window["start"])
         current_price = self.binance.get_current_price()
@@ -678,6 +681,7 @@ class BTC5MinBot:
         if not open_price or not current_price:
             return
         
+        # Log periódico
         if window["remaining"] % 10 == 0 or window["remaining"] <= 5:
             diff = ((current_price - open_price) / open_price * 100)
             log.info(f"📊 BTC: ${current_price:.2f} | Diff: {diff:+.3f}% | Restam: {window['remaining']}s")
@@ -688,17 +692,20 @@ class BTC5MinBot:
         if not market or not market["exists"]:
             return
         
+        # Estratégia de INÍCIO
         if window["phase"] == "INÍCIO":
             oportunidade = self.start_strategy.analyze(window, market, current_price)
             if oportunidade:
                 self.start_strategy.execute(self.trades, self.monitor, window, market, oportunidade)
         
+        # Estratégia de MEIO
         elif window["phase"] == "MEIO":
             self.middle_strategy.analyze(window, market, self.trades, self.monitor)
             if time.time() - self.last_mm_check > 10:
                 self.middle_strategy.check_profits(window, market, self.trades, self.monitor)
                 self.last_mm_check = time.time()
         
+        # Estratégia de FIM
         elif window["phase"] == "FIM":
             if len([t for t in self.trades.trades_abertos if t["strategy"] == "MIDDLE"]) == 0:
                 direction, confidence, sub = self.end_strategy.analyze(open_price, current_price, window["remaining"])
@@ -726,7 +733,13 @@ class BTC5MinBot:
         try:
             while self.running:
                 self.process_window()
+                self.heartbeat += 1
                 
+                # Heartbeat a cada 30 segundos para mostrar que está vivo
+                if self.heartbeat % 30 == 0:
+                    log.info(f"💓 Heartbeat - Ciclo #{self.heartbeat} - Ativo")
+                
+                # Relatório a cada hora
                 if time.time() - self.last_stats > 3600:
                     self.monitor.print_status()
                     self.last_stats = time.time()
@@ -761,3 +774,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Erro: {e}")
         bot.stop()
+
