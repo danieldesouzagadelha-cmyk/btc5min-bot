@@ -829,6 +829,7 @@ class BTC5MinBot:
                 self.start_strategy.execute(self.trades, self.monitor, window, market, oportunidade)
         
         elif window["phase"] == "MEIO":
-            log.info("🔍
+           log.info("🟢")
+
 
 
