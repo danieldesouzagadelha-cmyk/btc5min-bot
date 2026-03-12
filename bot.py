@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """
 =================================================================
-    BTC 5 MIN BOT v3.0 - MODO MONITORAMENTO
-    FASE 1: 24-48 horas de coleta de dados
-    Sem dinheiro real - apenas simulação e análise
-    Versão FINAL com Telegram e Web Server para Render
+    BTC 5 MIN BOT v3.0 - VERSÃO RAILWAY
+    Otimizado para rodar 24/7 no Railway
 =================================================================
 """
 
@@ -24,18 +22,18 @@ load_dotenv()
 
 # ============= CONFIGURAÇÕES =============
 class Config:
-    # Modo de operação - SEMPRE SIMULAÇÃO no monitoramento
-    SIMULATION_MODE = True
+    # Modo de operação
+    SIMULATION_MODE = os.getenv("SIMULATION_MODE", "true").lower() == "true"
     
-    # Banca virtual para teste
-    INITIAL_BANKROLL = 100.0
+    # Banca virtual
+    INITIAL_BANKROLL = float(os.getenv("INITIAL_BANKROLL", "100.0"))
     
     # ===== ESTRATÉGIA DE INÍCIO (0-60s) =====
     START = {
         "active": True,
         "window": [0, 60],
-        "trade_size_pct": 0.005,  # 0.5% da banca
-        "min_spread": 0.02,        # 2% spread mínimo
+        "trade_size_pct": 0.005,
+        "min_spread": 0.02,
         "max_trades_per_window": 3,
         "profit_target": 0.02,
         "stop_loss": 0.01
@@ -45,8 +43,8 @@ class Config:
     MIDDLE = {
         "active": True,
         "window": [60, 240],
-        "position_size_pct": 0.02,  # 2% da banca por lado
-        "spread_bps": 20,            # 0.2% de spread
+        "position_size_pct": 0.02,
+        "spread_bps": 20,
         "rebalance_seconds": 30,
         "max_positions": 3
     }
@@ -56,17 +54,17 @@ class Config:
         "active": True,
         "window": [240, 300],
         "high_prob": {
-            "min_confidence": 85,        # 85%+ certeza
-            "max_entry_price": 0.95,      # Máx $0.95
-            "trade_size_pct": 0.02,       # 2% da banca
-            "min_move_pct": 0.08          # 0.08% mínimo
+            "min_confidence": 85,
+            "max_entry_price": 0.95,
+            "trade_size_pct": 0.02,
+            "min_move_pct": 0.08
         },
         "low_prob": {
-            "max_confidence": 20,         # Máx 20% certeza
-            "min_entry_price": 0.01,       # Mín $0.01
-            "max_entry_price": 0.08,       # Máx $0.08
-            "trade_size_pct": 0.005,       # 0.5% da banca
-            "min_move_pct": 0.5            # 0.5% mínimo
+            "max_confidence": 20,
+            "min_entry_price": 0.01,
+            "max_entry_price": 0.08,
+            "trade_size_pct": 0.005,
+            "min_move_pct": 0.5
         }
     }
     
@@ -91,11 +89,8 @@ log = logging.getLogger("BTC5M")
 
 # ============= TELEGRAM =============
 def send_telegram(message):
-    """Envia mensagem para o Telegram"""
     if not config.TELEGRAM_TOKEN or not config.TELEGRAM_CHAT_ID:
-        log.warning("⚠️ Telegram não configurado. Defina TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID")
         return
-    
     try:
         url = f"https://api.telegram.org/bot{config.TELEGRAM_TOKEN}/sendMessage"
         payload = {
@@ -103,14 +98,9 @@ def send_telegram(message):
             "text": message,
             "parse_mode": "HTML"
         }
-        response = requests.post(url, json=payload, timeout=5)
-        
-        if response.status_code == 200:
-            log.info("📤 Mensagem Telegram enviada")
-        else:
-            log.error(f"❌ Erro Telegram: {response.text}")
+        requests.post(url, json=payload, timeout=3)
     except Exception as e:
-        log.error(f"❌ Erro ao enviar Telegram: {e}")
+        log.debug(f"Erro Telegram: {e}")
 
 # ============= CLIENTES API =============
 class BinanceClient:
@@ -121,9 +111,9 @@ class BinanceClient:
             resp = requests.get(url, timeout=2)
             data = resp.json()
             if data and len(data) > 0:
-                return float(data[0][4])  # Preço de fechamento
-        except Exception as e:
-            log.debug(f"Erro Binance: {e}")
+                return float(data[0][4])
+        except:
+            pass
         return None
     
     @staticmethod
@@ -134,8 +124,8 @@ class BinanceClient:
             data = resp.json()
             if data and len(data) > 0:
                 return float(data[0][4])
-        except Exception as e:
-            log.debug(f"Erro Binance: {e}")
+        except:
+            pass
         return None
 
 class PolymarketClient:
@@ -146,16 +136,12 @@ class PolymarketClient:
             params = {"token_id": token_id}
             resp = requests.get(url, params=params, timeout=2)
             data = resp.json()
-            
             bids = data.get("bids", [])
             asks = data.get("asks", [])
-            
             best_bid = float(bids[0]["price"]) if bids else 0
             best_ask = float(asks[0]["price"]) if asks else 1
-            
             return best_bid, best_ask
-        except Exception as e:
-            log.debug(f"Erro OrderBook: {e}")
+        except:
             return 0, 1
     
     @staticmethod
@@ -205,8 +191,7 @@ class PolymarketClient:
                 "down_ask": down_ask,
                 "exists": True
             }
-        except Exception as e:
-            log.debug(f"Erro find_market: {e}")
+        except:
             return None
 
 # ============= GERENCIADOR DE JANELAS =============
@@ -260,7 +245,6 @@ class StartStrategy:
         
         oportunidades = []
         
-        # Arbitragem UP/DOWN
         if market["up_bid"] > 0 and market["down_ask"] < 1:
             spread = market["up_bid"] - market["down_ask"]
             if spread > config.START["min_spread"]:
@@ -274,7 +258,6 @@ class StartStrategy:
                     "confidence": 99
                 })
         
-        # Scalping direcional
         if market["up_ask"] < 0.5 and current_price:
             oportunidades.append({
                 "type": "scalp_up",
@@ -371,15 +354,13 @@ class MiddleStrategy:
         }
         
         self.positions.append(position)
-        
         log.info(f"\n📊 MM: UP ${bid_up:.3f}/${ask_up:.3f} | DOWN ${bid_down:.3f}/${ask_down:.3f}")
     
     def check_profits(self, window, market, trade_manager, monitor):
         for position in self.positions[:]:
             if position["window_end"] != window["end"]:
                 continue
-            
-            if random.random() < 0.3:  # 30% chance de execução
+            if random.random() < 0.3:
                 profit = position["size"] * (config.MIDDLE["spread_bps"] / 10000)
                 trade_manager.record_mm_profit(window, profit, position["size"])
                 self.positions.remove(position)
@@ -418,12 +399,10 @@ class EndStrategy:
         return None, 0
     
     def analyze(self, open_price, current_price, seconds_left):
-        # Tenta HIGH primeiro
         direction, conf = self.analyze_high_prob(open_price, current_price, seconds_left)
         if direction:
             return direction, conf, "HIGH"
         
-        # Depois LOW
         direction, conf = self.analyze_low_prob(open_price, current_price, seconds_left)
         if direction:
             return direction, conf, "LOW"
@@ -482,7 +461,6 @@ class TradeManager:
         log.info(f"   Confiança: {confidence:.1f}%")
         log.info(f"   Tamanho: ${size:.2f}")
         
-        # Telegram para trades importantes
         if strategy != "START" or size > 5:
             send_telegram(
                 f"<b>{emoji} BTC 5min - {strategy}</b>\n\n"
@@ -517,14 +495,7 @@ class TradeManager:
         self.stats[strategy]["pnl"] += profit
         
         log.info(f"\n💰 ARBITRAGEM: Lucro ${profit:.2f}")
-        
-        send_telegram(
-            f"<b>💰 Arbitragem</b>\n\n"
-            f"Compra: {buy_direction} @ ${buy_price:.3f}\n"
-            f"Venda: {sell_direction} @ ${sell_price:.3f}\n"
-            f"Lucro: ${profit:.2f}"
-        )
-        
+        send_telegram(f"<b>💰 Arbitragem</b>\n\nLucro: ${profit:.2f}")
         return trade
     
     def record_mm_profit(self, window, profit, size):
@@ -533,7 +504,6 @@ class TradeManager:
         self.stats["MIDDLE"]["pnl"] += profit
         self.stats["MIDDLE"]["trades"] += 1
         log.info(f"\n💰 MM LUCRO: ${profit:.2f}")
-        
         send_telegram(f"<b>📊 Market Making</b>\n\nLucro: ${profit:.2f}")
     
     def close_trade(self, trade, close_price, winner):
@@ -542,12 +512,10 @@ class TradeManager:
             pnl = payout - trade["size"]
             self.stats[trade["strategy"]]["wins"] += 1
             result_emoji = "✅"
-            resultado = "LUCRO"
         else:
             pnl = -trade["size"]
             self.stats[trade["strategy"]]["losses"] += 1
             result_emoji = "❌"
-            resultado = "PREJUÍZO"
         
         self.stats[trade["strategy"]]["pnl"] += pnl
         self.bankroll += trade["size"] + pnl
@@ -561,7 +529,6 @@ class TradeManager:
         
         log.info(f"\n{result_emoji} FECHADO {trade['strategy']}: ${pnl:.2f} ({trade['pnl_pct']:+.1f}%)")
         
-        # Telegram para resultados importantes
         if trade["strategy"] != "START" or abs(pnl) > 2:
             send_telegram(
                 f"<b>{result_emoji} {trade['strategy']}</b>\n\n"
@@ -584,7 +551,6 @@ class TradeManager:
 # ============= SISTEMA DE MONITORAMENTO =============
 class Monitor:
     def __init__(self):
-        # Cria arquivo CSV com timestamp
         self.filename = f"monitor_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
         self.metrics = {
             "start_time": time.time(),
@@ -603,7 +569,6 @@ class Monitor:
             }
         }
         
-        # Cabeçalho do CSV
         with open(self.filename, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
@@ -613,28 +578,21 @@ class Monitor:
         
         log.info(f"\n📊 MONITORAMENTO INICIADO")
         log.info(f"   Arquivo: {self.filename}")
-        log.info(f"   Início: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # Notifica início via Telegram
         send_telegram(
-            f"<b>🤖 BTC 5min Bot - Monitoramento</b>\n\n"
-            f"Iniciando coleta de 24-48h\n"
-            f"Bankroll virtual: ${config.INITIAL_BANKROLL}\n"
-            f"Arquivo: {self.filename}"
+            f"<b>🤖 BTC 5min Bot - Railway</b>\n\n"
+            f"Iniciando monitoramento 24/7\n"
+            f"Bankroll virtual: ${config.INITIAL_BANKROLL}"
         )
     
     def registrar_trade(self, trade, latencia_ms):
-        """Registra trade executado"""
         self.metrics["trades_executados"] += 1
         self.metrics["volume_total"] += trade.get("size", 0)
         self.metrics["tempos_resposta"].append(latencia_ms)
-        
         estrategia = trade.get("strategy", "UNKNOWN")
         if estrategia in self.metrics["estrategias"]:
             self.metrics["estrategias"][estrategia]["tentativas"] += 1
     
     def registrar_resultado(self, trade, pnl):
-        """Registra resultado do trade"""
         if pnl > 0:
             self.metrics["trades_vencedores"] += 1
             resultado = "WIN"
@@ -645,7 +603,6 @@ class Monitor:
             self.metrics["trades_perdedores"] += 1
             resultado = "LOSS"
         
-        # Salva no CSV
         with open(self.filename, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
@@ -661,53 +618,23 @@ class Monitor:
             ])
     
     def registrar_oportunidade_perdida(self, estrategia, motivo):
-        """Registra oportunidade que não foi executada"""
         self.metrics["oportunidades_perdidas"] += 1
         log.info(f"   ⚠️ Oportunidade perdida [{estrategia}]: {motivo}")
     
-    def get_relatorio(self):
-        """Gera relatório completo"""
+    def print_status(self):
         elapsed = time.time() - self.metrics["start_time"]
         horas = elapsed / 3600
-        
         total_trades = self.metrics["trades_executados"]
         win_rate = (self.metrics["trades_vencedores"] / total_trades * 100) if total_trades > 0 else 0
-        
-        tempo_medio = sum(self.metrics["tempos_resposta"]) / len(self.metrics["tempos_resposta"]) if self.metrics["tempos_resposta"] else 0
-        
-        return {
-            "tempo_rodando": f"{horas:.1f}h",
-            "janelas": self.metrics["total_windows"],
-            "trades_total": total_trades,
-            "wins": self.metrics["trades_vencedores"],
-            "losses": self.metrics["trades_perdedores"],
-            "win_rate": f"{win_rate:.1f}%",
-            "volume": f"${self.metrics['volume_total']:.2f}",
-            "tempo_medio_resposta": f"{tempo_medio:.1f}ms",
-            "oportunidades_perdidas": self.metrics["oportunidades_perdidas"],
-            "estrategias": self.metrics["estrategias"]
-        }
-    
-    def print_status(self):
-        """Mostra status atual"""
-        rel = self.get_relatorio()
         
         log.info("\n" + "📊"*40)
         log.info("📈 RELATÓRIO DE MONITORAMENTO")
         log.info("📊"*40)
-        log.info(f"⏱️  Tempo: {rel['tempo_rodando']}")
-        log.info(f"📊 Janelas: {rel['janelas']}")
-        log.info(f"💰 Trades: {rel['trades_total']} ({rel['wins']}W/{rel['losses']}L)")
-        log.info(f"📈 Win rate: {rel['win_rate']}")
-        log.info(f"💵 Volume: {rel['volume']}")
-        log.info(f"⚡ Latência: {rel['tempo_medio_resposta']}")
-        log.info(f"🎯 Oportunidades perdidas: {rel['oportunidades_perdidas']}")
-        log.info("-"*40)
-        log.info("📊 Detalhamento por estratégia:")
-        for est, dados in rel['estrategias'].items():
-            if dados['tentativas'] > 0:
-                taxa = (dados['sucessos'] / dados['tentativas'] * 100) if dados['tentativas'] > 0 else 0
-                log.info(f"   {est}: {dados['tentativas']} tentativas | {taxa:.1f}% sucesso")
+        log.info(f"⏱️  Tempo: {horas:.1f}h")
+        log.info(f"📊 Janelas: {self.metrics['total_windows']}")
+        log.info(f"💰 Trades: {total_trades} ({self.metrics['trades_vencedores']}W/{self.metrics['trades_perdedores']}L)")
+        log.info(f"📈 Win rate: {win_rate:.1f}%")
+        log.info(f"💵 Volume: ${self.metrics['volume_total']:.2f}")
         log.info("📊"*40)
 
 # ============= BOT PRINCIPAL =============
@@ -730,84 +657,107 @@ class BTC5MinBot:
         self.last_stats = time.time()
         
         log.info("\n" + "🔥"*80)
-        log.info(" BTC 5 MIN BOT v3.0 - MODO MONITORAMENTO")
+        log.info(" BTC 5 MIN BOT v3.0 - RAILWAY EDITION")
         log.info("🔥"*80)
-        log.info(f" Modo: SIMULAÇÃO (sem dinheiro real)")
+        log.info(f" Modo: {'SIMULAÇÃO' if config.SIMULATION_MODE else 'REAL'}")
         log.info(f" Bankroll virtual: ${config.INITIAL_BANKROLL}")
-        log.info(f" Monitorando: {self.monitor.filename}")
         log.info("🔥"*80)
     
     def process_window(self):
         window = self.window_mgr.get_current_window()
         
-        # Nova janela
         if self.current_window != window["start"]:
             self.current_window = window["start"]
             self.monitor.metrics["total_windows"] += 1
-            
             log.info(f"\n{'='*80}")
-            log.info(f"⏰ JANELA #{self.monitor.metrics['total_windows']}: "
-                    f"{self.window_mgr.format_time(window['start'])} - "
-                    f"{self.window_mgr.format_time(window['end'])}")
-            log.info(f"📊 Fase: {window['phase']} ({window['elapsed']}s) | "
-                    f"Restam: {window['remaining']}s")
+            log.info(f"⏰ JANELA #{self.monitor.metrics['total_windows']}: {self.window_mgr.format_time(window['start'])} - {self.window_mgr.format_time(window['end'])}")
         
-        # Preços
         open_price = self.binance.get_price_at(window["start"])
         current_price = self.binance.get_current_price()
         
         if not open_price or not current_price:
             return
         
-        # Log periódico
         if window["remaining"] % 10 == 0 or window["remaining"] <= 5:
             diff = ((current_price - open_price) / open_price * 100)
-            log.info(f"📊 BTC: ${current_price:.2f} | Diff: {diff:+.3f}% | "
-                    f"Fase: {window['phase']} | Restam: {window['remaining']}s")
+            log.info(f"📊 BTC: ${current_price:.2f} | Diff: {diff:+.3f}% | Restam: {window['remaining']}s")
         
-        # Fecha trades expirados
         self.trades.check_expired_trades(window, self.binance, self.monitor)
         
-        # Busca mercado
         market = self.polymarket.find_market(window["start"])
         if not market or not market["exists"]:
             return
         
-        # ===== INÍCIO =====
         if window["phase"] == "INÍCIO":
             oportunidade = self.start_strategy.analyze(window, market, current_price)
             if oportunidade:
                 self.start_strategy.execute(self.trades, self.monitor, window, market, oportunidade)
-            else:
-                self.monitor.registrar_oportunidade_perdida("START", "Nenhuma oportunidade")
         
-        # ===== MEIO =====
         elif window["phase"] == "MEIO":
             self.middle_strategy.analyze(window, market, self.trades, self.monitor)
-            
             if time.time() - self.last_mm_check > 10:
                 self.middle_strategy.check_profits(window, market, self.trades, self.monitor)
                 self.last_mm_check = time.time()
         
-        # ===== FIM =====
         elif window["phase"] == "FIM":
             if len([t for t in self.trades.trades_abertos if t["strategy"] == "MIDDLE"]) == 0:
-                direction, confidence, sub = self.end_strategy.analyze(
-                    open_price, current_price, window["remaining"]
-                )
-                
+                direction, confidence, sub = self.end_strategy.analyze(open_price, current_price, window["remaining"])
                 if direction and sub:
                     strategy = f"END_{sub}"
                     price = market["up_price"] if direction == "UP" else market["down_price"]
                     
-                    # Validação
                     if sub == "HIGH":
                         if price > config.END["high_prob"]["max_entry_price"]:
-                            self.monitor.registrar_oportunidade_perdida(strategy, f"Preço alto {price:.3f}")
                             return
                         size = self.trades.calculate_trade_size("END_HIGH")
                     else:
                         if price < config.END["low_prob"]["min_entry_price"] or price > config.END["low_prob"]["max_entry_price"]:
-                            self.monitor.registrar_oportunidade_perdida(strategy, f"Preço fora range {price:.3f}")
                             return
-                        size = self
+                        size = self.trades.calculate_trade_size("END_LOW")
+                    
+                    trade = self.trades.execute_trade(window, strategy, direction, price, confidence, size, market)
+                    if trade:
+                        self.monitor.registrar_trade(trade, 0)
+    
+    def run(self):
+        """Loop infinito para rodar no Railway"""
+        log.info("\n🚀 BOT INICIADO - RODANDO 24/7 NO RAILWAY\n")
+        
+        try:
+            while self.running:
+                self.process_window()
+                
+                if time.time() - self.last_stats > 3600:
+                    self.monitor.print_status()
+                    self.last_stats = time.time()
+                
+                time.sleep(1)
+                
+        except KeyboardInterrupt:
+            self.stop()
+        except Exception as e:
+            log.error(f"❌ Erro fatal: {e}")
+            self.stop()
+    
+    def stop(self):
+        self.running = False
+        log.info("\n🛑 Bot parado")
+        self.monitor.print_status()
+        send_telegram(f"<b>🛑 Bot parado</b>\n\nBankroll final: ${self.trades.bankroll:.2f}")
+
+# ============= MAIN =============
+if __name__ == "__main__":
+    print("\n" + "🚀"*40)
+    print(" BTC 5 MIN BOT - VERSÃO RAILWAY")
+    print("🚀"*40)
+    print(" Rodando 24/7 - Pressione Ctrl+C para parar\n")
+    
+    bot = BTC5MinBot()
+    
+    try:
+        bot.run()
+    except KeyboardInterrupt:
+        bot.stop()
+    except Exception as e:
+        print(f"❌ Erro: {e}")
+        bot.stop()
