@@ -1,40 +1,33 @@
-capital_usdt = 50
-btc_balance = 0
+capital = 50
+btc = 0
 
-active_buys = set()
+position_price = None
 
-def simulate(price, grid):
+def trade(price):
 
-    global capital_usdt
-    global btc_balance
-    global active_buys
+    global capital
+    global btc
+    global position_price
 
-    for level in grid:
+    # BUY
+    if btc == 0 and capital >= 10:
 
-        # BUY
-        if price <= level and level not in active_buys and capital_usdt >= 5:
+        btc = 10 / price
+        capital -= 10
+        position_price = price
 
-            btc_buy = 5 / price
-            btc_balance += btc_buy
-            capital_usdt -= 5
+        print("BUY:", price)
 
-            active_buys.add(level)
+    # SELL
+    elif btc > 0:
 
-            print("BUY SIMULADO:", round(price,2))
+        if price > position_price + 20:
 
-        # SELL
-        if price >= level and level in active_buys:
+            capital += btc * price
+            btc = 0
 
-            btc_sell = btc_balance
-            usdt_sell = btc_sell * price
+            print("SELL:", price)
 
-            capital_usdt += usdt_sell
-            btc_balance = 0
+    total = capital + btc * price
 
-            active_buys.remove(level)
-
-            print("SELL SIMULADO:", round(price,2))
-
-    total = capital_usdt + btc_balance * price
-
-    print("Capital atual:", round(total,2))
+    print("Capital:", round(total,2))
