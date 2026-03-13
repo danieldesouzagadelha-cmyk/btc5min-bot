@@ -1,13 +1,28 @@
-def create_grid(price):
+last_price = None
 
-    grid_range = 0.01   # 1%
-    grid_levels = 10
+def detect_reversion(price, bids):
 
-    lower = price * (1 - grid_range)
-    upper = price * (1 + grid_range)
+    global last_price
 
-    step = (upper - lower) / grid_levels
+    if last_price is None:
+        last_price = price
+        return False
 
-    grid = [lower + step*i for i in range(grid_levels+1)]
+    price_drop = last_price - price
 
-    return grid
+    last_price = price
+
+    # queda mínima para considerar reversão
+    if price_drop < 15:
+        return False
+
+    # verificar liquidez forte no bid
+    for bid in bids[:5]:
+
+        bid_price = bid[0]
+        bid_volume = bid[1]
+
+        if bid_volume > 1:   # parede grande
+            return True
+
+    return False
