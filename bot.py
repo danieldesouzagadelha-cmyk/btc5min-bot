@@ -1,29 +1,27 @@
 import time
 
-from exchange import get_price
-from strategy import create_grid
-from simulator import simulate
+from exchange import get_market
+from strategy import detect_reversion
+from simulator import trade
 
-print("BOT SIMULADOR INICIADO")
-
-grid = None
+print("Liquidity Reversion Bot iniciado")
 
 while True:
 
     try:
 
-        price = get_price()
+        price, bids, asks, best_bid, best_ask = get_market()
 
-        print("Preço BTC:", price)
+        print("Preço:", price)
 
-        if grid is None:
-            grid = create_grid(price)
-            print("GRID:", grid)
+        signal = detect_reversion(price, bids)
 
-        simulate(price, grid)
+        if signal:
+            print("Reversão detectada")
+            trade(price)
 
     except Exception as e:
 
         print("Erro:", e)
 
-    time.sleep(15)
+    time.sleep(5)
