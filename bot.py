@@ -1,46 +1,45 @@
 import time
+import traceback
 
 from exchange import get_market
 from strategy import detect_reversion
 from simulator import trade
 
 print("===================================")
-print("  LIQUIDITY REVERSION BOT STARTED  ")
+print("   LIQUIDITY REVERSION BOT START   ")
 print("===================================")
 
-loop_count = 0
+loop = 0
 
 while True:
 
     try:
 
-        loop_count += 1
+        loop += 1
 
-        # pegar dados da MEXC
         price, bids, asks, best_bid, best_ask = get_market()
 
         print("")
-        print("Loop:", loop_count)
-        print("Preço atual:", price)
-        print("Best BID:", best_bid)
-        print("Best ASK:", best_ask)
+        print("Loop:", loop)
+        print("Preço:", price)
+        print("Bid:", best_bid)
+        print("Ask:", best_ask)
 
-        # detectar reversão de liquidez
         signal = detect_reversion(price, bids)
 
         if signal:
 
-            print(">>> REVERSÃO DETECTADA <<<")
+            print("REVERSÃO DETECTADA")
 
             trade(price)
 
         else:
 
-            print("Sem sinal de trade")
+            print("Sem trade")
 
     except Exception as e:
 
-        print("ERRO NO BOT:", e)
+        print("ERRO:", e)
+        traceback.print_exc()
 
-    # delay
     time.sleep(5)
