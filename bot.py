@@ -42,7 +42,7 @@ class Config:
     # MODO REAL ATIVADO!
     SIMULATION_MODE = os.getenv("SIMULATION_MODE", "false").lower() == "false"
     
-    # Capital real (comece com $50)
+    # Capital real (use o valor da variável CAPITAL)
     CAPITAL = float(os.getenv("CAPITAL", "50.0"))
     
     # Configurações de Market Making (LP)
@@ -519,4 +519,3 @@ if __name__ == "__main__":
         bot.run()
     except KeyboardInterrupt:
         bot.stop()
-
