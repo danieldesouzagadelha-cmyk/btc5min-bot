@@ -1,54 +1,29 @@
-import ccxt
 import time
 
-print("Simulador de Grid iniciado")
+from exchange import get_price
+from strategy import create_grid
+from simulator import simulate
 
-exchange = ccxt.mexc()
+print("BOT SIMULADOR INICIADO")
 
-symbol = "BTC/USDT"
-
-capital_usdt = 50
-btc_balance = 0
-
-grid_lower = 64000
-grid_upper = 66000
-grid_levels = 10
-
-step = (grid_upper - grid_lower) / grid_levels
-
-grid = [grid_lower + step*i for i in range(grid_levels+1)]
-
-print("GRID:", grid)
+grid = None
 
 while True:
 
-    ticker = exchange.fetch_ticker(symbol)
-    price = ticker["last"]
+    try:
 
-    print("Preço atual:", price)
+        price = get_price()
 
-    for level in grid:
+        print("Preço BTC:", price)
 
-        if price <= level and capital_usdt > 5:
+        if grid is None:
+            grid = create_grid(price)
+            print("GRID:", grid)
 
-            btc_buy = 5 / price
+        simulate(price, grid)
 
-            btc_balance += btc_buy
-            capital_usdt -= 5
+    except Exception as e:
 
-            print("SIMULADO BUY:", price)
+        print("Erro:", e)
 
-        if price >= level and btc_balance > 0:
-
-            usdt_sell = btc_balance * price
-
-            capital_usdt += usdt_sell
-            btc_balance = 0
-
-            print("SIMULADO SELL:", price)
-
-    total = capital_usdt + btc_balance * price
-
-    print("Capital:", total)
-
-    time.sleep(20)
+    time.sleep(15)
