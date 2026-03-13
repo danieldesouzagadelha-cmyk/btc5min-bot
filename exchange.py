@@ -6,6 +6,17 @@ exchange = ccxt.mexc({
 
 symbol = "BTC/USDT"
 
-def get_price():
+def get_market():
+
     ticker = exchange.fetch_ticker(symbol)
-    return ticker["last"]
+    orderbook = exchange.fetch_order_book(symbol)
+
+    price = ticker["last"]
+
+    bids = orderbook["bids"]
+    asks = orderbook["asks"]
+
+    best_bid = bids[0][0]
+    best_ask = asks[0][0]
+
+    return price, bids, asks, best_bid, best_ask
