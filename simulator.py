@@ -20,9 +20,9 @@ last_trade_time = 0
 cooldown_seconds = 30
 
 # estratégia
-ENTRY_DROP = -15
-TAKE_PROFIT = 25
-STOP_LOSS = -20
+ENTRY_DROP = -10
+TAKE_PROFIT = 15
+STOP_LOSS = -15
 
 
 def trade(price):
