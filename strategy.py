@@ -10,8 +10,8 @@ trades = 0
 wins = 0
 losses = 0
 
-TREND_MOVE = 0.4
-PULLBACK = 0.15
+TREND_MOVE = 0.25
+PULLBACK = 0.08
 
 TAKE_PROFIT = 0.25
 STOP_LOSS = -0.2
