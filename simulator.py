@@ -1,39 +1,24 @@
 import time
 from telegram_bot import send_message
 
-# =========================
-# CAPITAL
-# =========================
-
 capital = 50
 btc = 0
 position_price = None
 
-# =========================
-# CONTROLE
-# =========================
-
 last_price = None
 last_trade_time = 0
-cooldown_seconds = 15
 
-# =========================
-# ESTATÍSTICAS
-# =========================
+cooldown_seconds = 10
 
 trades = 0
 wins = 0
 losses = 0
 
-# =========================
-# PARÂMETROS
-# =========================
-
 ENTRY_DROP = 8
 ENTRY_RISE = 8
-TAKE_PROFIT = 15
-STOP_LOSS = -12
-IMBALANCE_TRIGGER = 2
+TAKE_PROFIT = 20
+STOP_LOSS = -10
+IMBALANCE_TRIGGER = 3
 
 
 def trade(price, bid, ask, bid_volume, ask_volume):
@@ -53,72 +38,36 @@ def trade(price, bid, ask, bid_volume, ask_volume):
         last_price = price
         return
 
-    # =========================
-    # MOVIMENTO DE PREÇO
-    # =========================
-
     price_drop = last_price - price
     price_move = price - last_price
 
-    # =========================
-    # IMBALANCE
-    # =========================
+    # ignorar micro movimento
+    if abs(price_move) < 2:
+        last_price = price
+        return
 
     imbalance = 0
     if ask_volume > 0:
         imbalance = bid_volume / ask_volume
 
-    # evitar imbalance absurdo
-    imbalance = min(imbalance, 50)
+    # limitar imbalance absurdo
+    imbalance = min(imbalance, 20)
 
     print("Preço:", price)
-    print("Bid:", bid)
-    print("Ask:", ask)
-    print("Price drop:", round(price_drop,2))
     print("Price move:", round(price_move,2))
-    print("Bid volume:", bid_volume)
-    print("Ask volume:", ask_volume)
+    print("Price drop:", round(price_drop,2))
     print("Imbalance:", round(imbalance,2))
-
-    # =========================
-    # PRESSÃO DE COMPRA
-    # =========================
 
     buy_pressure = imbalance > IMBALANCE_TRIGGER
 
-    if buy_pressure:
-        print("BUY PRESSURE DETECTED")
-
-    # =========================
-    # REVERSÃO (queda)
-    # =========================
-
     reversal = price_drop >= ENTRY_DROP and buy_pressure
-
-    if reversal:
-        print("REVERSÃO DETECTADA")
-
-    # =========================
-    # MOMENTUM (subida)
-    # =========================
-
     momentum = price_move >= ENTRY_RISE and buy_pressure
-
-    if momentum:
-        print("MOMENTUM DETECTADO")
-
-    # =========================
-    # COOLDOWN
-    # =========================
 
     if now - last_trade_time < cooldown_seconds:
         last_price = price
         return
 
-    # =========================
     # BUY
-    # =========================
-
     if btc == 0 and capital >= 10 and (reversal or momentum):
 
         btc = 10 / price
@@ -130,14 +79,10 @@ def trade(price, bid, ask, bid_volume, ask_volume):
         print("BUY EXECUTADO")
 
         send_message(
-            f"🟢 BUY BTC\n"
-            f"Preço: {price}"
+            f"🟢 BUY BTC\nPreço: {price}"
         )
 
-    # =========================
     # SELL
-    # =========================
-
     if btc > 0:
 
         move = price - position_price
@@ -155,9 +100,7 @@ def trade(price, bid, ask, bid_volume, ask_volume):
             print("TAKE PROFIT")
 
             send_message(
-                f"🔴 TAKE PROFIT\n"
-                f"Preço: {price}\n"
-                f"Lucro: {round(move,2)}"
+                f"🔴 TAKE PROFIT\nPreço: {price}"
             )
 
         elif move <= STOP_LOSS:
@@ -173,14 +116,8 @@ def trade(price, bid, ask, bid_volume, ask_volume):
             print("STOP LOSS")
 
             send_message(
-                f"⚠️ STOP LOSS\n"
-                f"Preço: {price}\n"
-                f"Perda: {round(move,2)}"
+                f"⚠️ STOP LOSS\nPreço: {price}"
             )
-
-    # =========================
-    # ESTATÍSTICAS
-    # =========================
 
     total = capital + btc * price
 
