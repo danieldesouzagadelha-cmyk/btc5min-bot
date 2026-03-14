@@ -97,10 +97,17 @@ def trade(pair, price):
             print("TP", pair)
 
             send_message(
-    f"🔴 TAKE PROFIT {pair}\n"
-    f"Preço: {round(price,4)}\n"
-    f"Lucro: {round(pnl,2)} USDT\n"
-    f"Capital: {round(capital,2)} USDT"
+f"🔴 TAKE PROFIT {pair}\n"
+f"Preço: {round(price,4)}\n"
+f"Lucro: {round(pnl,2)} USDT\n"
+f"Capital: {round(capital,2)} USDT"
+)
+
+send_message(
+f"📊 STATUS BOT\n"
+f"Capital: {round(capital,2)} USDT\n"
+f"Trades: {trades}\n"
+f"WinRate: {round(winrate,2)}%"
 )
 
         # STOP LOSS
@@ -140,3 +147,4 @@ def trade(pair, price):
     # resetar tendência se preço cair
     if price < trend_start:
         state[pair]["trend_start"] = price
+        
