@@ -12,17 +12,16 @@ def detect_reversion(price, bids):
 
     last_price = price
 
-    # queda mínima para considerar reversão
-    if price_drop < 15:
+    # detectar queda menor
+    if price_drop < 5:
         return False
 
-    # verificar liquidez forte no bid
+    # verificar liquidez no bid
     for bid in bids[:5]:
 
-        bid_price = bid[0]
         bid_volume = bid[1]
 
-        if bid_volume > 1:   # parede grande
+        if bid_volume > 0.5:
             return True
 
     return False
