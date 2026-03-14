@@ -11,6 +11,7 @@ trades = 0
 wins = 0
 losses = 0
 
+# parâmetros da estratégia
 TREND_MOVE = 20
 PULLBACK = 6
 
@@ -38,11 +39,12 @@ def trade(price):
 
     # detectar tendência
     if move > TREND_MOVE:
+
         print("TREND DETECTADA")
 
-        # pullback
         pullback = price - last_price
 
+        # detectar correção
         if pullback <= -PULLBACK and btc == 0:
 
             btc = 10 / price
@@ -52,10 +54,10 @@ def trade(price):
             print("BUY EXECUTADO")
 
             send_message(
-                f"🟢 BUY\nPreço: {price}"
+                f"🟢 BUY BTC\nPreço: {price}"
             )
 
-    # venda
+    # saída da posição
     if btc > 0:
 
         profit = price - entry_price
