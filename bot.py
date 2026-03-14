@@ -21,7 +21,6 @@ print("===================================")
 # envia mensagem quando inicia
 send_message("🤖 Bot iniciado e rodando na nuvem")
 
-
 loop = 0
 
 while True:
@@ -41,10 +40,16 @@ while True:
                     print("Erro ao pegar preço:", pair)
                     continue
 
+                # mostra preço no log
+                print(pair, "Preço:", price)
+
                 trade(pair, price)
 
             except Exception as e:
+
                 print("Erro na moeda", pair, e)
+
+                send_message(f"⚠️ Erro na moeda {pair}: {e}")
 
         time.sleep(8)
 
