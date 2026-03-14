@@ -8,7 +8,7 @@ position_price = None
 last_price = None
 last_trade_time = 0
 
-cooldown_seconds = 10
+cooldown_seconds = 5
 
 trades = 0
 wins = 0
@@ -16,8 +16,10 @@ losses = 0
 
 ENTRY_DROP = 8
 ENTRY_RISE = 8
+
 TAKE_PROFIT = 20
 STOP_LOSS = -10
+
 IMBALANCE_TRIGGER = 3
 
 
@@ -34,18 +36,19 @@ def trade(price, bid, ask, bid_volume, ask_volume):
 
     now = time.time()
 
+    # primeira execução
     if last_price is None:
         last_price = price
+        return
+
+    # ignorar tick duplicado
+    if price == last_price:
         return
 
     price_drop = last_price - price
     price_move = price - last_price
 
-    # ignorar micro movimento
-    if abs(price_move) < 2:
-        last_price = price
-        return
-
+    # calcular imbalance
     imbalance = 0
     if ask_volume > 0:
         imbalance = bid_volume / ask_volume
@@ -54,9 +57,9 @@ def trade(price, bid, ask, bid_volume, ask_volume):
     imbalance = min(imbalance, 20)
 
     print("Preço:", price)
-    print("Price move:", round(price_move,2))
-    print("Price drop:", round(price_drop,2))
-    print("Imbalance:", round(imbalance,2))
+    print("Price move:", round(price_move, 2))
+    print("Price drop:", round(price_drop, 2))
+    print("Imbalance:", round(imbalance, 2))
 
     buy_pressure = imbalance > IMBALANCE_TRIGGER
 
@@ -67,7 +70,10 @@ def trade(price, bid, ask, bid_volume, ask_volume):
         last_price = price
         return
 
+    # ======================
     # BUY
+    # ======================
+
     if btc == 0 and capital >= 10 and (reversal or momentum):
 
         btc = 10 / price
@@ -82,7 +88,10 @@ def trade(price, bid, ask, bid_volume, ask_volume):
             f"🟢 BUY BTC\nPreço: {price}"
         )
 
+    # ======================
     # SELL
+    # ======================
+
     if btc > 0:
 
         move = price - position_price
@@ -125,10 +134,10 @@ def trade(price, bid, ask, bid_volume, ask_volume):
     if trades > 0:
         winrate = (wins / trades) * 100
 
-    print("Capital:", round(total,2))
+    print("Capital:", round(total, 2))
     print("Trades:", trades)
     print("Wins:", wins)
     print("Losses:", losses)
-    print("WinRate:", round(winrate,2))
+    print("WinRate:", round(winrate, 2))
 
     last_price = price
