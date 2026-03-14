@@ -1,105 +1,112 @@
 from telegram_bot import send_message
 
 capital = 50
-btc = 0
-entry_price = None
 
-last_price = None
-trend_start = None
+positions = {}
+
+state = {}
 
 trades = 0
 wins = 0
 losses = 0
 
-# parâmetros da estratégia
-TREND_MOVE = 20
-PULLBACK = 6
+TREND_MOVE = 1.0
+PULLBACK = 0.3
 
-TAKE_PROFIT = 12
-STOP_LOSS = -8
+TAKE_PROFIT = 0.6
+STOP_LOSS = -0.4
 
 
-def trade(price):
+def trade(pair, price):
 
     global capital
-    global btc
-    global entry_price
-    global last_price
-    global trend_start
     global trades
     global wins
     global losses
 
-    if last_price is None:
-        last_price = price
-        trend_start = price
+    if pair not in state:
+
+        state[pair] = {
+            "last_price": price,
+            "trend_start": price
+        }
+
+        positions[pair] = None
+
         return
+
+    last_price = state[pair]["last_price"]
+    trend_start = state[pair]["trend_start"]
 
     move = price - trend_start
 
     # detectar tendência
     if move > TREND_MOVE:
 
-        print("TREND DETECTADA")
-
         pullback = price - last_price
 
-        # detectar correção
-        if pullback <= -PULLBACK and btc == 0:
+        if pullback <= -PULLBACK and positions[pair] is None:
 
-            btc = 10 / price
-            capital -= 10
-            entry_price = price
+            size = 10 / price
 
-            print("BUY EXECUTADO")
+            positions[pair] = {
+                "entry": price,
+                "size": size
+            }
+
+            print("BUY", pair)
 
             send_message(
-                f"🟢 BUY BTC\nPreço: {price}"
+                f"🟢 BUY {pair}\nPreço: {price}"
             )
 
-    # saída da posição
-    if btc > 0:
+    # saída
+    if positions[pair] is not None:
 
-        profit = price - entry_price
+        entry = positions[pair]["entry"]
+        size = positions[pair]["size"]
+
+        profit = price - entry
 
         if profit >= TAKE_PROFIT:
 
-            capital += btc * price
-            btc = 0
+            capital += size * price
+
+            positions[pair] = None
 
             trades += 1
             wins += 1
 
-            print("TAKE PROFIT")
+            print("TP", pair)
 
             send_message(
-                f"🔴 TAKE PROFIT\nPreço: {price}"
+                f"🔴 TAKE PROFIT {pair}\nPreço: {price}"
             )
 
         elif profit <= STOP_LOSS:
 
-            capital += btc * price
-            btc = 0
+            capital += size * price
+
+            positions[pair] = None
 
             trades += 1
             losses += 1
 
-            print("STOP LOSS")
+            print("SL", pair)
 
             send_message(
-                f"⚠️ STOP LOSS\nPreço: {price}"
+                f"⚠️ STOP LOSS {pair}\nPreço: {price}"
             )
 
-    total = capital + btc * price
+    total = capital
 
     winrate = 0
+
     if trades > 0:
         winrate = (wins / trades) * 100
 
-    print("Capital:", round(total, 2))
+    print("Capital:", round(total,2))
     print("Trades:", trades)
-    print("Wins:", wins)
-    print("Losses:", losses)
-    print("WinRate:", round(winrate, 2))
+    print("WinRate:", round(winrate,2))
 
-    last_price = price
+    state[pair]["last_price"] = price
