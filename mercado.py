@@ -4,13 +4,17 @@ def get_price(symbol):
 
     try:
 
-        url = f"https://api.mexc.com/api/v3/ticker/price?symbol={symbol}"
+        url = f"https://api.mexc.com/api/v3/ticker/bookTicker?symbol={symbol}"
 
         response = requests.get(url, timeout=5)
 
         data = response.json()
 
-        price = float(data["price"])
+        bid = float(data["bidPrice"])
+        ask = float(data["askPrice"])
+
+        # usamos o preço médio entre bid e ask
+        price = (bid + ask) / 2
 
         return price
 
