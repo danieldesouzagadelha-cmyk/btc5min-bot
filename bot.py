@@ -1,9 +1,8 @@
 import time
 import traceback
 
-from exchange import get_market
-from strategy import detect_reversion
-from simulator import trade
+from simulador import trade
+from mercado import get_market_data
 
 print("===================================")
 print("     LIQUIDITY REVERSION BOT       ")
@@ -16,32 +15,33 @@ while True:
     try:
 
         loop += 1
+        print("\nLoop:", loop)
 
-        print("")
-        print("Loop:", loop)
+        # =========================
+        # PEGAR DADOS DO MERCADO
+        # =========================
 
-        price, bids, asks, best_bid, best_ask = get_market()
+        price, bid, ask, bid_volume, ask_volume = get_market_data()
 
         print("Preço:", price)
-        print("Bid:", best_bid)
-        print("Ask:", best_ask)
+        print("Bid:", bid)
+        print("Ask:", ask)
 
-        # detectar reversão
-        signal = detect_reversion(price, bids, asks)
+        # =========================
+        # EXECUTAR ESTRATÉGIA
+        # =========================
 
-        if signal:
+        trade(price, bid, ask, bid_volume, ask_volume)
 
-            print("REVERSÃO DETECTADA")
+        # =========================
+        # ESPERA ENTRE LOOPS
+        # =========================
 
-            trade(price)
-
-        else:
-
-            print("Sem trade")
+        time.sleep(1)
 
     except Exception as e:
 
         print("ERRO:", e)
         traceback.print_exc()
 
-    time.sleep(5)
+        time.sleep(5)
