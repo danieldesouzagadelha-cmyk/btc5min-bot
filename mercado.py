@@ -2,9 +2,10 @@ import requests
 
 def get_market_data():
 
-    url = "https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=5"
+    url = "https://api.mexc.com/api/v3/depth?symbol=BTCUSDT&limit=5"
 
-    data = requests.get(url).json()
+    response = requests.get(url)
+    data = response.json()
 
     bid = float(data["bids"][0][0])
     ask = float(data["asks"][0][0])
