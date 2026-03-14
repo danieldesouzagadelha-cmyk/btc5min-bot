@@ -1,43 +1,103 @@
+from telegram_bot import send_message
+
+capital = 50
+btc = 0
+entry_price = None
+
 last_price = None
+trend_start = None
 
-def detect_reversion(price, bids, asks):
+trades = 0
+wins = 0
+losses = 0
 
+TREND_MOVE = 20
+PULLBACK = 6
+
+TAKE_PROFIT = 12
+STOP_LOSS = -8
+
+
+def trade(price):
+
+    global capital
+    global btc
+    global entry_price
     global last_price
+    global trend_start
+    global trades
+    global wins
+    global losses
 
-    # inicializar primeiro preço
     if last_price is None:
         last_price = price
-        return False
+        trend_start = price
+        return
 
-    # calcular movimento de preço
-    price_drop = last_price - price
+    move = price - trend_start
+
+    # detectar tendência
+    if move > TREND_MOVE:
+        print("TREND DETECTADA")
+
+        # pullback
+        pullback = price - last_price
+
+        if pullback <= -PULLBACK and btc == 0:
+
+            btc = 10 / price
+            capital -= 10
+            entry_price = price
+
+            print("BUY EXECUTADO")
+
+            send_message(
+                f"🟢 BUY\nPreço: {price}"
+            )
+
+    # venda
+    if btc > 0:
+
+        profit = price - entry_price
+
+        if profit >= TAKE_PROFIT:
+
+            capital += btc * price
+            btc = 0
+
+            trades += 1
+            wins += 1
+
+            print("TAKE PROFIT")
+
+            send_message(
+                f"🔴 TAKE PROFIT\nPreço: {price}"
+            )
+
+        elif profit <= STOP_LOSS:
+
+            capital += btc * price
+            btc = 0
+
+            trades += 1
+            losses += 1
+
+            print("STOP LOSS")
+
+            send_message(
+                f"⚠️ STOP LOSS\nPreço: {price}"
+            )
+
+    total = capital + btc * price
+
+    winrate = 0
+    if trades > 0:
+        winrate = (wins / trades) * 100
+
+    print("Capital:", round(total, 2))
+    print("Trades:", trades)
+    print("Wins:", wins)
+    print("Losses:", losses)
+    print("WinRate:", round(winrate, 2))
 
     last_price = price
-
-    print("Price drop:", round(price_drop,2))
-
-    # filtro mínimo de movimento
-    if price_drop < 5:
-        return False
-
-    # calcular volume no bid
-    bid_volume = sum(b[1] for b in bids[:10])
-
-    # calcular volume no ask
-    ask_volume = sum(a[1] for a in asks[:10])
-
-    if ask_volume == 0:
-        return False
-
-    imbalance = bid_volume / ask_volume
-
-    print("Bid volume:", round(bid_volume,2))
-    print("Ask volume:", round(ask_volume,2))
-    print("Imbalance:", round(imbalance,2))
-
-    # compradores dominando
-    if imbalance > 1.3:
-        print("BUY PRESSURE DETECTED")
-        return True
-
-    return False
