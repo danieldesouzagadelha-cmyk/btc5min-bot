@@ -2,10 +2,20 @@ import requests
 
 def get_price(symbol):
 
-    url = f"https://api.mexc.com/api/v3/ticker/price?symbol={symbol}"
+    try:
 
-    data = requests.get(url).json()
+        url = f"https://api.mexc.com/api/v3/ticker/price?symbol={symbol}"
 
-    price = float(data["price"])
+        response = requests.get(url, timeout=5)
 
-    return price
+        data = response.json()
+
+        price = float(data["price"])
+
+        return price
+
+    except Exception as e:
+
+        print("Erro ao buscar preço:", symbol, e)
+
+        return None
