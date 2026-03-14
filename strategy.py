@@ -10,11 +10,11 @@ trades = 0
 wins = 0
 losses = 0
 
-TREND_MOVE = 0.08
-PULLBACK = 0.03
+TREND_MOVE = 0.05
+PULLBACK = 0.02
 
-TAKE_PROFIT = 0.06
-STOP_LOSS = -0.3
+TAKE_PROFIT = 0.04
+STOP_LOSS = -0.2
 
 
 def trade(pair, price):
