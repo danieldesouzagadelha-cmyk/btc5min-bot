@@ -6,7 +6,9 @@ pairs = [
 "BTCUSDT",
 "ETHUSDT",
 "SOLUSDT",
-"AVAXUSDT"
+"AVAXUSDT",
+"ADAUSDT",
+"LINKUSDT"
 ]
 
 print("===================================")
