@@ -1,38 +1,39 @@
 import time
 from telegram_bot import send_message
 
-# ==============================
+# =========================
 # CAPITAL
-# ==============================
+# =========================
 
 capital = 50
 btc = 0
 position_price = None
 
-# ==============================
+# =========================
+# CONTROLE
+# =========================
+
+last_price = None
+last_trade_time = 0
+cooldown_seconds = 10
+
+# =========================
 # ESTATÍSTICAS
-# ==============================
+# =========================
 
 trades = 0
 wins = 0
 losses = 0
 
-# ==============================
-# CONTROLE
-# ==============================
+# =========================
+# PARÂMETROS
+# =========================
 
-last_price = None
-last_trade_time = 0
-cooldown_seconds = 20
-
-# ==============================
-# PARÂMETROS DA ESTRATÉGIA
-# ==============================
-
-ENTRY_DROP = 20
-TAKE_PROFIT = 35
-STOP_LOSS = -25
-IMBALANCE_TRIGGER = 2
+ENTRY_DROP = 15
+TAKE_PROFIT = 25
+STOP_LOSS = -20
+IMBALANCE_TRIGGER = 1.8
+PUMP_TRIGGER = 40
 
 
 def trade(price, bid, ask, bid_volume, ask_volume):
@@ -40,27 +41,24 @@ def trade(price, bid, ask, bid_volume, ask_volume):
     global capital
     global btc
     global position_price
+    global last_price
+    global last_trade_time
     global trades
     global wins
     global losses
-    global last_price
-    global last_trade_time
 
     now = time.time()
-
-    # ==============================
-    # PRIMEIRO LOOP
-    # ==============================
 
     if last_price is None:
         last_price = price
         return
 
-    # ==============================
+    # =========================
     # CÁLCULOS
-    # ==============================
+    # =========================
 
     price_drop = last_price - price
+    price_move = price - last_price
 
     imbalance = 0
     if ask_volume > 0:
@@ -70,68 +68,84 @@ def trade(price, bid, ask, bid_volume, ask_volume):
     print("Bid:", bid)
     print("Ask:", ask)
     print("Price drop:", round(price_drop,2))
+    print("Price move:", round(price_move,2))
     print("Bid volume:", bid_volume)
     print("Ask volume:", ask_volume)
     print("Imbalance:", round(imbalance,2))
 
-    # ==============================
-    # DETECÇÃO DE PRESSÃO
-    # ==============================
+    # =========================
+    # PRESSÃO DE COMPRA
+    # =========================
 
-    buy_pressure = False
+    buy_pressure = imbalance > IMBALANCE_TRIGGER
 
-    if imbalance > IMBALANCE_TRIGGER:
-        buy_pressure = True
+    if buy_pressure:
         print("BUY PRESSURE DETECTED")
 
-    # ==============================
-    # DETECÇÃO DE REVERSÃO
-    # ==============================
+    # =========================
+    # REVERSÃO
+    # =========================
 
-    reversal = False
+    reversal = price_drop >= ENTRY_DROP and buy_pressure
 
-    if price_drop >= ENTRY_DROP and buy_pressure:
-        reversal = True
+    if reversal:
         print("REVERSÃO DETECTADA")
 
-    # ==============================
+    # =========================
+    # MICRO TENDÊNCIA
+    # =========================
+
+    micro_trend = price_move > 10 and buy_pressure
+
+    if micro_trend:
+        print("MICRO TENDÊNCIA DETECTADA")
+
+    # =========================
+    # PUMP
+    # =========================
+
+    pump = price_move >= PUMP_TRIGGER
+
+    if pump:
+        print("PUMP DETECTADO")
+
+    # =========================
     # COOLDOWN
-    # ==============================
+    # =========================
 
     if now - last_trade_time < cooldown_seconds:
-        print("Cooldown ativo")
         last_price = price
         return
 
-    # ==============================
+    # =========================
     # BUY
-    # ==============================
+    # =========================
 
-    if btc == 0 and capital >= 10 and reversal:
+    if btc == 0 and capital >= 10:
 
-        btc = 10 / price
-        capital -= 10
-        position_price = price
+        if pump or reversal or micro_trend:
 
-        last_trade_time = now
+            btc = 10 / price
+            capital -= 10
+            position_price = price
 
-        print("BUY EXECUTADO")
+            last_trade_time = now
 
-        send_message(
-            f"🟢 BUY BTC\n"
-            f"Preço: {price}\n"
-            f"Capital restante: {round(capital,2)}"
-        )
+            print("BUY EXECUTADO")
 
-    # ==============================
+            send_message(
+                f"🟢 BUY BTC\n"
+                f"Preço: {price}"
+            )
+
+    # =========================
     # SELL
-    # ==============================
+    # =========================
 
     if btc > 0:
 
         move = price - position_price
 
-        # TAKE PROFIT
         if move >= TAKE_PROFIT:
 
             capital += btc * price
@@ -150,7 +164,6 @@ def trade(price, bid, ask, bid_volume, ask_volume):
                 f"Lucro: {round(move,2)}"
             )
 
-        # STOP LOSS
         elif move <= STOP_LOSS:
 
             capital += btc * price
@@ -169,9 +182,9 @@ def trade(price, bid, ask, bid_volume, ask_volume):
                 f"Perda: {round(move,2)}"
             )
 
-    # ==============================
+    # =========================
     # ESTATÍSTICAS
-    # ==============================
+    # =========================
 
     total = capital + btc * price
 
