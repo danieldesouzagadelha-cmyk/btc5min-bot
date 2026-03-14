@@ -17,12 +17,15 @@ def trade(price):
 
     now = time.time()
 
-    # verificar cooldown
+    # cooldown
     if now - last_trade_time < cooldown_seconds:
         print("Cooldown ativo")
         return
 
+    # ======================
     # BUY
+    # ======================
+
     if btc == 0 and capital >= 10:
 
         btc = 10 / price
@@ -33,10 +36,18 @@ def trade(price):
 
         print("BUY:", price)
 
-    # SELL
-    elif btc > 0:
+        return
 
-        if price > position_price + 20:
+    # ======================
+    # SELL
+    # ======================
+
+    if btc > 0:
+
+        profit = price - position_price
+
+        # take profit
+        if profit > 15:
 
             capital += btc * price
             btc = 0
