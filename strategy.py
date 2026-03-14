@@ -14,7 +14,7 @@ TREND_MOVE = 0.08
 PULLBACK = 0.03
 
 TAKE_PROFIT = 0.06
-STOP_LOSS = -0.2
+STOP_LOSS = -0.3
 
 
 def trade(pair, price):
