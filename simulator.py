@@ -62,7 +62,7 @@ def trade(price):
 
     if btc > 0:
 
-        profit = price - position_price
+        profit = (price - position_price) * btc
 
         # TAKE PROFIT
         if profit >= 8:
