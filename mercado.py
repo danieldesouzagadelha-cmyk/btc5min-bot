@@ -4,8 +4,7 @@ def get_market_data():
 
     url = "https://api.mexc.com/api/v3/depth?symbol=BTCUSDT&limit=5"
 
-    response = requests.get(url)
-    data = response.json()
+    data = requests.get(url).json()
 
     bid = float(data["bids"][0][0])
     ask = float(data["asks"][0][0])
