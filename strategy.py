@@ -1,20 +1,23 @@
+import time
 from telegram_bot import send_message
 
 capital = 50
 
 positions = {}
-
 state = {}
 
 trades = 0
 wins = 0
 losses = 0
 
+cooldown = {}
+COOLDOWN_TIME = 30
+
 TREND_MOVE = 0.03
 PULLBACK = 0.015
 
 TAKE_PROFIT = 0.04
-STOP_LOSS = -0.2
+STOP_LOSS = -0.02
 
 
 def trade(pair, price):
@@ -23,6 +26,8 @@ def trade(pair, price):
     global trades
     global wins
     global losses
+
+    now = time.time()
 
     if pair not in state:
 
@@ -45,6 +50,11 @@ def trade(pair, price):
 
         pullback = price - last_price
 
+        # cooldown
+        if pair in cooldown:
+            if now - cooldown[pair] < COOLDOWN_TIME:
+                return
+
         if pullback <= -PULLBACK and positions[pair] is None:
 
             size = 10 / price
@@ -53,6 +63,8 @@ def trade(pair, price):
                 "entry": price,
                 "size": size
             }
+
+            cooldown[pair] = now
 
             print("BUY", pair)
 
@@ -68,9 +80,12 @@ def trade(pair, price):
 
         profit = price - entry
 
+        # TAKE PROFIT
         if profit >= TAKE_PROFIT:
 
-            capital += size * price
+            pnl = size * (price - entry)
+
+            capital += pnl
 
             positions[pair] = None
 
@@ -80,12 +95,15 @@ def trade(pair, price):
             print("TP", pair)
 
             send_message(
-                f"🔴 TAKE PROFIT {pair}\nPreço: {price}"
+                f"🔴 TAKE PROFIT {pair}\nPreço: {price}\nLucro: {round(pnl,2)}"
             )
 
+        # STOP LOSS
         elif profit <= STOP_LOSS:
 
-            capital += size * price
+            pnl = size * (price - entry)
+
+            capital += pnl
 
             positions[pair] = None
 
@@ -95,7 +113,7 @@ def trade(pair, price):
             print("SL", pair)
 
             send_message(
-                f"⚠️ STOP LOSS {pair}\nPreço: {price}"
+                f"⚠️ STOP LOSS {pair}\nPreço: {price}\nResultado: {round(pnl,2)}"
             )
 
     total = capital
@@ -105,8 +123,12 @@ def trade(pair, price):
     if trades > 0:
         winrate = (wins / trades) * 100
 
-    print("Capital:", round(total,2))
+    print("Capital:", round(total, 2))
     print("Trades:", trades)
-    print("WinRate:", round(winrate,2))
+    print("WinRate:", round(winrate, 2))
 
     state[pair]["last_price"] = price
+
+    # resetar tendência se preço cair
+    if price < trend_start:
+        state[pair]["trend_start"] = price
