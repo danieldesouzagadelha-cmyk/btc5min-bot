@@ -1,8 +1,8 @@
 import requests
 
-def get_price():
+def get_price(symbol):
 
-    url = "https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT"
+    url = f"https://api.mexc.com/api/v3/ticker/price?symbol={symbol}"
 
     data = requests.get(url).json()
 
