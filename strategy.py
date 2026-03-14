@@ -69,8 +69,10 @@ def trade(pair, price):
             print("BUY", pair)
 
             send_message(
-                f"🟢 BUY {pair}\nPreço: {price}"
-            )
+    f"🟢 BUY {pair}\n"
+    f"Preço: {round(price,4)}\n"
+    f"Capital: {round(capital,2)} USDT"
+)
 
     # saída
     if positions[pair] is not None:
@@ -95,8 +97,11 @@ def trade(pair, price):
             print("TP", pair)
 
             send_message(
-                f"🔴 TAKE PROFIT {pair}\nPreço: {price}\nLucro: {round(pnl,2)}"
-            )
+    f"🔴 TAKE PROFIT {pair}\n"
+    f"Preço: {round(price,4)}\n"
+    f"Lucro: {round(pnl,2)} USDT\n"
+    f"Capital: {round(capital,2)} USDT"
+)
 
         # STOP LOSS
         elif profit <= STOP_LOSS:
@@ -113,8 +118,11 @@ def trade(pair, price):
             print("SL", pair)
 
             send_message(
-                f"⚠️ STOP LOSS {pair}\nPreço: {price}\nResultado: {round(pnl,2)}"
-            )
+    f"⚠️ STOP LOSS {pair}\n"
+    f"Preço: {round(price,4)}\n"
+    f"Resultado: {round(pnl,2)} USDT\n"
+    f"Capital: {round(capital,2)} USDT"
+)
 
     total = capital
 
