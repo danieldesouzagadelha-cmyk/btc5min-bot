@@ -79,7 +79,8 @@ def trade(pair, price):
         entry = positions[pair]["entry"]
         size = positions[pair]["size"]
 
-        profit = price - entry
+        # lucro percentual
+        profit = (price - entry) / entry
 
         # TAKE PROFIT
         if profit >= TAKE_PROFIT:
