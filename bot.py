@@ -46,7 +46,7 @@ while True:
             except Exception as e:
                 print("Erro na moeda", pair, e)
 
-        time.sleep(2)
+        time.sleep(4)
 
     except Exception as e:
 
