@@ -1,35 +1,20 @@
 import time
-import traceback
-
-from simulator import trade
-from mercado import get_market_data
+from mercado import get_price
+from strategy import trade
 
 print("===================================")
-print("     LIQUIDITY REVERSION BOT       ")
+print("      TREND PULLBACK BOT           ")
 print("===================================")
 
 loop = 0
 
 while True:
 
-    try:
+    loop += 1
+    print("Loop:", loop)
 
-        loop += 1
-        print("\nLoop:", loop)
+    price = get_price()
 
-        price, bid, ask, bid_volume, ask_volume = get_market_data()
+    trade(price)
 
-        print("Preço:", price)
-        print("Bid:", bid)
-        print("Ask:", ask)
-
-        trade(price, bid, ask, bid_volume, ask_volume)
-
-        time.sleep(1)
-
-    except Exception as e:
-
-        print("ERRO:", e)
-        traceback.print_exc()
-
-        time.sleep(5)
+    time.sleep(1)
