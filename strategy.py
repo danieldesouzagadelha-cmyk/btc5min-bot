@@ -37,7 +37,6 @@ def trade(pair, price):
         }
 
         positions[pair] = None
-
         return
 
     last_price = state[pair]["last_price"]
@@ -69,10 +68,10 @@ def trade(pair, price):
             print("BUY", pair)
 
             send_message(
-    f"🟢 BUY {pair}\n"
-    f"Preço: {round(price,4)}\n"
-    f"Capital: {round(capital,2)} USDT"
-)
+                f"🟢 BUY {pair}\n"
+                f"Preço: {round(price,4)}\n"
+                f"Capital: {round(capital,2)} USDT"
+            )
 
     # saída
     if positions[pair] is not None:
@@ -97,18 +96,20 @@ def trade(pair, price):
             print("TP", pair)
 
             send_message(
-f"🔴 TAKE PROFIT {pair}\n"
-f"Preço: {round(price,4)}\n"
-f"Lucro: {round(pnl,2)} USDT\n"
-f"Capital: {round(capital,2)} USDT"
-)
+                f"🔴 TAKE PROFIT {pair}\n"
+                f"Preço: {round(price,4)}\n"
+                f"Lucro: {round(pnl,2)} USDT\n"
+                f"Capital: {round(capital,2)} USDT"
+            )
 
-send_message(
-f"📊 STATUS BOT\n"
-f"Capital: {round(capital,2)} USDT\n"
-f"Trades: {trades}\n"
-f"WinRate: {round(winrate,2)}%"
-)
+            winrate = (wins / trades) * 100
+
+            send_message(
+                f"📊 STATUS BOT\n"
+                f"Capital: {round(capital,2)} USDT\n"
+                f"Trades: {trades}\n"
+                f"WinRate: {round(winrate,2)}%"
+            )
 
         # STOP LOSS
         elif profit <= STOP_LOSS:
@@ -125,16 +126,24 @@ f"WinRate: {round(winrate,2)}%"
             print("SL", pair)
 
             send_message(
-    f"⚠️ STOP LOSS {pair}\n"
-    f"Preço: {round(price,4)}\n"
-    f"Resultado: {round(pnl,2)} USDT\n"
-    f"Capital: {round(capital,2)} USDT"
-)
+                f"⚠️ STOP LOSS {pair}\n"
+                f"Preço: {round(price,4)}\n"
+                f"Resultado: {round(pnl,2)} USDT\n"
+                f"Capital: {round(capital,2)} USDT"
+            )
+
+            winrate = (wins / trades) * 100
+
+            send_message(
+                f"📊 STATUS BOT\n"
+                f"Capital: {round(capital,2)} USDT\n"
+                f"Trades: {trades}\n"
+                f"WinRate: {round(winrate,2)}%"
+            )
 
     total = capital
 
     winrate = 0
-
     if trades > 0:
         winrate = (wins / trades) * 100
 
@@ -147,4 +156,3 @@ f"WinRate: {round(winrate,2)}%"
     # resetar tendência se preço cair
     if price < trend_start:
         state[pair]["trend_start"] = price
-        
