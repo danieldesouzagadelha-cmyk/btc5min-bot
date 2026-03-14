@@ -15,7 +15,7 @@ position_price = None
 
 last_price = None
 last_trade_time = 0
-cooldown_seconds = 10
+cooldown_seconds = 15
 
 # =========================
 # ESTATÍSTICAS
@@ -29,11 +29,11 @@ losses = 0
 # PARÂMETROS
 # =========================
 
-ENTRY_DROP = 15
-TAKE_PROFIT = 25
-STOP_LOSS = -20
-IMBALANCE_TRIGGER = 1.8
-PUMP_TRIGGER = 40
+ENTRY_DROP = 8
+ENTRY_RISE = 8
+TAKE_PROFIT = 15
+STOP_LOSS = -12
+IMBALANCE_TRIGGER = 2
 
 
 def trade(price, bid, ask, bid_volume, ask_volume):
@@ -54,15 +54,22 @@ def trade(price, bid, ask, bid_volume, ask_volume):
         return
 
     # =========================
-    # CÁLCULOS
+    # MOVIMENTO DE PREÇO
     # =========================
 
     price_drop = last_price - price
     price_move = price - last_price
 
+    # =========================
+    # IMBALANCE
+    # =========================
+
     imbalance = 0
     if ask_volume > 0:
         imbalance = bid_volume / ask_volume
+
+    # evitar imbalance absurdo
+    imbalance = min(imbalance, 50)
 
     print("Preço:", price)
     print("Bid:", bid)
@@ -83,7 +90,7 @@ def trade(price, bid, ask, bid_volume, ask_volume):
         print("BUY PRESSURE DETECTED")
 
     # =========================
-    # REVERSÃO
+    # REVERSÃO (queda)
     # =========================
 
     reversal = price_drop >= ENTRY_DROP and buy_pressure
@@ -92,22 +99,13 @@ def trade(price, bid, ask, bid_volume, ask_volume):
         print("REVERSÃO DETECTADA")
 
     # =========================
-    # MICRO TENDÊNCIA
+    # MOMENTUM (subida)
     # =========================
 
-    micro_trend = price_move > 10 and buy_pressure
+    momentum = price_move >= ENTRY_RISE and buy_pressure
 
-    if micro_trend:
-        print("MICRO TENDÊNCIA DETECTADA")
-
-    # =========================
-    # PUMP
-    # =========================
-
-    pump = price_move >= PUMP_TRIGGER
-
-    if pump:
-        print("PUMP DETECTADO")
+    if momentum:
+        print("MOMENTUM DETECTADO")
 
     # =========================
     # COOLDOWN
@@ -121,22 +119,20 @@ def trade(price, bid, ask, bid_volume, ask_volume):
     # BUY
     # =========================
 
-    if btc == 0 and capital >= 10:
+    if btc == 0 and capital >= 10 and (reversal or momentum):
 
-        if pump or reversal or micro_trend:
+        btc = 10 / price
+        capital -= 10
+        position_price = price
 
-            btc = 10 / price
-            capital -= 10
-            position_price = price
+        last_trade_time = now
 
-            last_trade_time = now
+        print("BUY EXECUTADO")
 
-            print("BUY EXECUTADO")
-
-            send_message(
-                f"🟢 BUY BTC\n"
-                f"Preço: {price}"
-            )
+        send_message(
+            f"🟢 BUY BTC\n"
+            f"Preço: {price}"
+        )
 
     # =========================
     # SELL
