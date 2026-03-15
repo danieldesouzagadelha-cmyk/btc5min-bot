@@ -13,11 +13,11 @@ losses = 0
 cooldown = {}
 COOLDOWN_TIME = 30
 
-TREND_MOVE = 0.03
-PULLBACK = 0.015
+TREND_MOVE = 0.004
+PULLBACK = 0.002
 
-TAKE_PROFIT = 0.04
-STOP_LOSS = -0.02
+TAKE_PROFIT = 0.007
+STOP_LOSS = -0.003
 
 
 def trade(pair, price):
