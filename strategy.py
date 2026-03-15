@@ -42,7 +42,7 @@ def trade(pair, price):
     last_price = state[pair]["last_price"]
     trend_start = state[pair]["trend_start"]
 
-    move = price - trend_start
+    move = (price - trend_start) / trend_start
 
     # detectar tendência
     if move > TREND_MOVE:
