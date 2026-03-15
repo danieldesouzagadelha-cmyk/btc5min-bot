@@ -13,10 +13,10 @@ def get_price(symbol):
         bid = float(data["bidPrice"])
         ask = float(data["askPrice"])
 
-        # usamos o preço médio entre bid e ask
-        price = (bid + ask) / 2
-
-        return price
+        return {
+            "bid": bid,
+            "ask": ask
+        }
 
     except Exception as e:
 
