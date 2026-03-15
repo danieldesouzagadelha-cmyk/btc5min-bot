@@ -34,14 +34,20 @@ while True:
 
             try:
 
-                price = get_price(pair)
+                data = get_price(pair)
 
-                if price is None:
+                if data is None:
                     print("Erro ao pegar preço:", pair)
                     continue
 
+                bid = data["bid"]
+                ask = data["ask"]
+
+                # usamos ASK para entrada
+                price = ask
+
                 # mostra preço no log
-                print(pair, "Preço:", price)
+                print(pair, "Bid:", bid, "Ask:", ask)
 
                 trade(pair, price)
 
