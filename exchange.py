@@ -32,4 +32,8 @@ def create_order(symbol, side, quantity):
 
     r = requests.post(url, headers=headers)
 
-    return r.json()
+    response = r.json()
+
+    print("MEXC ORDER RESPONSE:", response)
+
+    return response
