@@ -10,16 +10,18 @@ SECRET = os.getenv("MEXC_SECRET")
 BASE = "https://api.mexc.com"
 
 
-def create_order(symbol, side, quantity):
+def create_order(symbol, side, amount):
 
     endpoint = "/api/v3/order"
     timestamp = int(time.time() * 1000)
 
-    # BUY usa quoteOrderQty (valor em USDT)
+    # BUY usando valor em USDT
     if side == "BUY":
-        params = f"symbol={symbol}&side=BUY&type=MARKET&quoteOrderQty={quantity}&timestamp={timestamp}"
+        params = f"symbol={symbol}&side=BUY&type=MARKET&quoteOrderQty={amount}&timestamp={timestamp}"
+
+    # SELL usando quantidade da moeda
     else:
-        params = f"symbol={symbol}&side=SELL&type=MARKET&quantity={quantity}&timestamp={timestamp}"
+        params = f"symbol={symbol}&side=SELL&type=MARKET&quantity={amount}&timestamp={timestamp}"
 
     signature = hmac.new(
         SECRET.encode(),
@@ -33,10 +35,10 @@ def create_order(symbol, side, quantity):
         "X-MEXC-APIKEY": API_KEY
     }
 
-    r = requests.post(url, headers=headers)
+    response = requests.post(url, headers=headers)
 
-    response = r.json()
+    data = response.json()
 
-    print("MEXC ORDER RESPONSE:", response)
+    print("MEXC RESPONSE:", data)
 
-    return response
+    return data
