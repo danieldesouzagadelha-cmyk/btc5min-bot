@@ -58,7 +58,7 @@ def trade(pair, price):
             if now - cooldown[pair] < COOLDOWN_TIME:
                 return
 
-        if pullback <= -PULLBACK and positions[pair] is None:
+    if pullback <= -PULLBACK and positions[pair] is None:
 
     size = TRADE_VALUE / price
 
