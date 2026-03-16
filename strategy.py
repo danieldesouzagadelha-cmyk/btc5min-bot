@@ -1,8 +1,8 @@
 import time
 from telegram_bot import send_message
-from exchange import create_order   # NOVO
+from exchange import create_order
 
-capital = 35
+capital = 50
 
 positions = {}
 state = {}
@@ -19,6 +19,9 @@ PULLBACK = 0.002
 
 TAKE_PROFIT = 0.007
 STOP_LOSS = -0.003
+
+# valor por trade
+TRADE_VALUE = 5
 
 
 def trade(pair, price):
@@ -57,8 +60,7 @@ def trade(pair, price):
 
         if pullback <= -PULLBACK and positions[pair] is None:
 
-            TRADE_VALUE = 2
-size = TRADE_VALUE / price
+            size = TRADE_VALUE / price
 
             # 🟢 COMPRA REAL NA MEXC
             create_order(pair, "BUY", size)
@@ -90,7 +92,7 @@ size = TRADE_VALUE / price
         # TAKE PROFIT
         if profit >= TAKE_PROFIT:
 
-            # 🔴 VENDA REAL NA MEXC
+            # 🔴 VENDA REAL
             create_order(pair, "SELL", size)
 
             pnl = size * (price - entry)
@@ -123,7 +125,7 @@ size = TRADE_VALUE / price
         # STOP LOSS
         elif profit <= STOP_LOSS:
 
-            # 🔴 VENDA REAL NA MEXC
+            # 🔴 VENDA REAL
             create_order(pair, "SELL", size)
 
             pnl = size * (price - entry)
