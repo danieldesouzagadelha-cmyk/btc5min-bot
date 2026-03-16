@@ -13,10 +13,13 @@ BASE = "https://api.mexc.com"
 def create_order(symbol, side, quantity):
 
     endpoint = "/api/v3/order"
-
     timestamp = int(time.time() * 1000)
 
-    params = f"symbol={symbol}&side={side}&type=MARKET&quantity={quantity}&timestamp={timestamp}"
+    # BUY usa quoteOrderQty (valor em USDT)
+    if side == "BUY":
+        params = f"symbol={symbol}&side=BUY&type=MARKET&quoteOrderQty={quantity}&timestamp={timestamp}"
+    else:
+        params = f"symbol={symbol}&side=SELL&type=MARKET&quantity={quantity}&timestamp={timestamp}"
 
     signature = hmac.new(
         SECRET.encode(),
