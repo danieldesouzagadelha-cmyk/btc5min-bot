@@ -2,7 +2,7 @@ import time
 from telegram_bot import send_message
 from exchange import create_order
 
-capital = 50
+capital = 35
 
 positions = {}
 state = {}
