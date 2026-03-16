@@ -5,12 +5,26 @@ from telegram_bot import send_message
 
 
 pairs = [
-    "BTCUSDT",
-    "ETHUSDT",
-    "SOLUSDT",
-    "AVAXUSDT",
-    "ADAUSDT",
-    "LINKUSDT"
+"BTCUSDT",
+"ETHUSDT",
+"SOLUSDT",
+"BNBUSDT",
+"XRPUSDT",
+"ADAUSDT",
+"DOGEUSDT",
+"AVAXUSDT",
+"LINKUSDT",
+"MATICUSDT",
+"LTCUSDT",
+"DOTUSDT",
+"NEARUSDT",
+"APTUSDT",
+"ARBUSDT",
+"OPUSDT",
+"INJUSDT",
+"ATOMUSDT",
+"SUIUSDT",
+"FTMUSDT"
 ]
 
 
