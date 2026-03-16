@@ -21,7 +21,7 @@ TAKE_PROFIT = 0.007
 STOP_LOSS = -0.003
 
 # valor em USDT por trade
-TRADE_VALUE = 5
+TRADE_VALUE = 10
 
 
 def trade(pair, price):
