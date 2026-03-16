@@ -2,7 +2,7 @@ import time
 from telegram_bot import send_message
 from exchange import create_order   # NOVO
 
-capital = 50
+capital = 35
 
 positions = {}
 state = {}
@@ -57,7 +57,8 @@ def trade(pair, price):
 
         if pullback <= -PULLBACK and positions[pair] is None:
 
-            size = 10 / price
+            TRADE_VALUE = 2
+size = TRADE_VALUE / price
 
             # 🟢 COMPRA REAL NA MEXC
             create_order(pair, "BUY", size)
