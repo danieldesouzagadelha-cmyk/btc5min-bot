@@ -1,5 +1,6 @@
 import time
 from telegram_bot import send_message
+from exchange import create_order   # NOVO
 
 capital = 50
 
@@ -58,6 +59,9 @@ def trade(pair, price):
 
             size = 10 / price
 
+            # 🟢 COMPRA REAL NA MEXC
+            create_order(pair, "BUY", size)
+
             positions[pair] = {
                 "entry": price,
                 "size": size
@@ -84,6 +88,9 @@ def trade(pair, price):
 
         # TAKE PROFIT
         if profit >= TAKE_PROFIT:
+
+            # 🔴 VENDA REAL NA MEXC
+            create_order(pair, "SELL", size)
 
             pnl = size * (price - entry)
 
@@ -114,6 +121,9 @@ def trade(pair, price):
 
         # STOP LOSS
         elif profit <= STOP_LOSS:
+
+            # 🔴 VENDA REAL NA MEXC
+            create_order(pair, "SELL", size)
 
             pnl = size * (price - entry)
 
