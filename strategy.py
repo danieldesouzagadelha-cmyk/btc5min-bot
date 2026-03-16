@@ -2,7 +2,7 @@ import time
 from telegram_bot import send_message
 from exchange import create_order
 
-capital = 35
+capital = 50
 
 positions = {}
 state = {}
@@ -20,7 +20,7 @@ PULLBACK = 0.002
 TAKE_PROFIT = 0.007
 STOP_LOSS = -0.003
 
-# valor por trade
+# valor em USDT por trade
 TRADE_VALUE = 5
 
 
@@ -58,19 +58,19 @@ def trade(pair, price):
             if now - cooldown[pair] < COOLDOWN_TIME:
                 return
 
-    if pullback <= -PULLBACK and positions[pair] is None:
+        if pullback <= -PULLBACK and positions[pair] is None:
 
-    size = TRADE_VALUE / price
+            size = round(TRADE_VALUE / price, 4)
 
-    # 🟢 COMPRA REAL NA MEXC
-    create_order(pair, "BUY", size)
+            # 🟢 COMPRA REAL NA MEXC
+            create_order(pair, "BUY", size)
 
-    positions[pair] = {
-        "entry": price,
-        "size": size
-    }
+            positions[pair] = {
+                "entry": price,
+                "size": size
+            }
 
-    cooldown[pair] = now
+            cooldown[pair] = now
 
             print("BUY", pair)
 
@@ -86,13 +86,11 @@ def trade(pair, price):
         entry = positions[pair]["entry"]
         size = positions[pair]["size"]
 
-        # lucro percentual
         profit = (price - entry) / entry
 
         # TAKE PROFIT
         if profit >= TAKE_PROFIT:
 
-            # 🔴 VENDA REAL
             create_order(pair, "SELL", size)
 
             pnl = size * (price - entry)
@@ -109,7 +107,7 @@ def trade(pair, price):
             send_message(
                 f"🔴 TAKE PROFIT {pair}\n"
                 f"Preço: {round(price,4)}\n"
-                f"Lucro: {round(pnl,2)} USDT\n"
+                f"Lucro: {round(pnl,4)} USDT\n"
                 f"Capital: {round(capital,2)} USDT"
             )
 
@@ -125,7 +123,6 @@ def trade(pair, price):
         # STOP LOSS
         elif profit <= STOP_LOSS:
 
-            # 🔴 VENDA REAL
             create_order(pair, "SELL", size)
 
             pnl = size * (price - entry)
@@ -142,7 +139,7 @@ def trade(pair, price):
             send_message(
                 f"⚠️ STOP LOSS {pair}\n"
                 f"Preço: {round(price,4)}\n"
-                f"Resultado: {round(pnl,2)} USDT\n"
+                f"Resultado: {round(pnl,4)} USDT\n"
                 f"Capital: {round(capital,2)} USDT"
             )
 
