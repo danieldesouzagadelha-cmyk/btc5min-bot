@@ -60,10 +60,10 @@ def trade(pair, price):
 
         if pullback <= -PULLBACK and positions[pair] is None:
 
-            size = round(TRADE_VALUE / price, 4)
+            size = round(TRADE_VALUE / price, 3)
 
-            # 🟢 COMPRA REAL NA MEXC
-            create_order(pair, "BUY", size)
+            # 🟢 COMPRA REAL NA MEXC (valor em USDT)
+            create_order(pair, "BUY", TRADE_VALUE)
 
             positions[pair] = {
                 "entry": price,
