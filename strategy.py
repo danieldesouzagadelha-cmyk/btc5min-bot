@@ -41,6 +41,9 @@ def trade(pair, price):
     move = (price - trend_start) / trend_start
 
 
+    # =============================
+    # ENTRADA
+    # =============================
     if move > TREND_MOVE:
 
         pullback = price - last_price
@@ -57,7 +60,11 @@ def trade(pair, price):
 
             size = round(TRADE_VALUE / price, 6)
 
-            create_order(pair, "BUY", size)
+            order = create_order(pair, "BUY", size)
+
+            if order is None:
+                send_message(f"❌ Falha ao comprar {pair}")
+                return
 
             positions[pair] = {
                 "entry": price,
@@ -73,6 +80,9 @@ def trade(pair, price):
             )
 
 
+    # =============================
+    # SAÍDA
+    # =============================
     if positions[pair] is not None:
 
         entry = positions[pair]["entry"]
@@ -81,9 +91,14 @@ def trade(pair, price):
         profit = (price - entry) / entry
 
 
+        # TAKE PROFIT
         if profit >= TAKE_PROFIT:
 
-            create_order(pair, "SELL", size)
+            order = create_order(pair, "SELL", size)
+
+            if order is None:
+                send_message(f"❌ Falha ao vender {pair}")
+                return
 
             pnl = size * (price - entry)
 
@@ -100,9 +115,14 @@ def trade(pair, price):
             )
 
 
+        # STOP LOSS
         elif profit <= STOP_LOSS:
 
-            create_order(pair, "SELL", size)
+            order = create_order(pair, "SELL", size)
+
+            if order is None:
+                send_message(f"❌ Falha ao vender {pair}")
+                return
 
             pnl = size * (price - entry)
 
