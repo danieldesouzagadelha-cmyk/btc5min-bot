@@ -4,14 +4,14 @@ from strategy import trade, capital, send_status
 from telegram_bot import send_message
 
 # ============================================================
-#  PARES MONITORADOS — 5 pares selecionados
+#  PARES — seus originais
 # ============================================================
 pairs = [
     "BTCUSDT",
     "ETHUSDT",
     "SOLUSDT",
-    "DOGEUSDT",
-    "XRPUSDT",
+    "AVAXUSDT",
+    "LINKUSDT",
 ]
 
 # ============================================================
@@ -25,8 +25,8 @@ send_message(
     f"🤖 Bot iniciado!\n"
     f"📌 Pares: {', '.join(pairs)}\n"
     f"💰 Banca: {capital} USDT\n"
-    f"⚙️ TP: 0.9% | SL: 0.4% | Trailing: ON\n"
-    f"🎯 Max posições: 3"
+    f"⚙️ TP: 0.7% | SL: 0.3%\n"
+    f"💸 Trade fixo: $7 USDT"
 )
 
 # ============================================================
@@ -34,7 +34,7 @@ send_message(
 # ============================================================
 loop = 0
 last_status_time = time.time()
-STATUS_INTERVAL = 3600  # status automático a cada 1 hora
+STATUS_INTERVAL  = 3600  # status a cada 1 hora
 
 while True:
     try:
