@@ -15,13 +15,13 @@ def create_order(symbol, side, amount):
     endpoint = "/api/v3/order"
     timestamp = int(time.time() * 1000)
 
-    # BUY usando valor em USDT
-    if side == "BUY":
-        params = f"symbol={symbol}&side=BUY&type=MARKET&quoteOrderQty={amount}&timestamp={timestamp}"
-
-    # SELL usando quantidade da moeda
-    else:
-        params = f"symbol={symbol}&side=SELL&type=MARKET&quantity={amount}&timestamp={timestamp}"
+    params = (
+        f"symbol={symbol}"
+        f"&side={side}"
+        f"&type=MARKET"
+        f"&quantity={amount}"
+        f"&timestamp={timestamp}"
+    )
 
     signature = hmac.new(
         SECRET.encode(),
@@ -39,6 +39,7 @@ def create_order(symbol, side, amount):
 
     data = response.json()
 
-    print("MEXC RESPONSE:", data)
+    print("===== MEXC ORDER =====")
+    print(data)
 
     return data
