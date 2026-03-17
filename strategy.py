@@ -33,10 +33,15 @@ TRAILING_DISTANCE   = 0.003  # sai se cair 0.3% do topo
 # ============================================================
 #  GESTÃO DE BANCA
 # ============================================================
-RISK_PERCENT     = 0.12  # 12% da banca por trade (~$9.50)
+RISK_PERCENT     = 0.07  # ✅ CORRIGIDO: 7% por trade (~$5.50) — mais seguro
 MAX_POSITIONS    = 3     # máximo de posições simultâneas
 DAILY_LOSS_LIMIT = 0.15  # para o bot se perder 15% da banca no dia
 COOLDOWN_TIME    = 30    # segundos entre trades no mesmo par
+
+# ============================================================
+#  FILTRO DE SPREAD
+# ============================================================
+MAX_SPREAD_PCT = 0.0005  # spread máximo permitido: 0.05%
 
 
 # ============================================================
@@ -44,7 +49,7 @@ COOLDOWN_TIME    = 30    # segundos entre trades no mesmo par
 # ============================================================
 
 def get_trade_value():
-    """Trade dinâmico: 12% da banca atual."""
+    """Trade dinâmico: 7% da banca atual."""
     return round(capital * RISK_PERCENT, 2)
 
 
@@ -71,6 +76,17 @@ def daily_limit_reached():
         )
         return True
     return False
+
+
+def spread_ok(bid, ask):
+    """
+    ✅ NOVO — Filtro de spread.
+    Evita entrar em mercado ilíquido ou com spread alto.
+    """
+    if bid is None or ask is None or bid == 0:
+        return False
+    spread_pct = (ask - bid) / bid
+    return spread_pct <= MAX_SPREAD_PCT
 
 
 def send_status():
@@ -137,7 +153,7 @@ def close_position(pair, price, reason):
 #  FUNÇÃO PRINCIPAL
 # ============================================================
 
-def trade(pair, price):
+def trade(pair, price, bid=None, ask=None):
     global capital
 
     reset_daily_loss_if_needed()
@@ -169,13 +185,18 @@ def trade(pair, price):
         trade_value = get_trade_value()
         capital_ok  = trade_value <= capital
 
-        if move > TREND_MOVE and not in_cooldown and slots_ok and capital_ok:
+        # ✅ NOVO — filtro de spread antes de entrar
+        spread_valido = spread_ok(bid, ask) if bid and ask else True
+
+        if move > TREND_MOVE and not in_cooldown and slots_ok and capital_ok and spread_valido:
             pullback_pct = (price - last_price) / last_price
 
             if pullback_pct <= -PULLBACK:
+                # ✅ CORRIGIDO: calcula size ANTES e usa em BUY e SELL
                 size = round(trade_value / price, 6)
 
-                create_order(pair, "BUY", trade_value)
+                # ✅ CORRIGIDO: BUY com quantidade (size), não com USDT
+                create_order(pair, "BUY", size)
                 capital -= trade_value
 
                 positions[pair] = {
@@ -187,11 +208,12 @@ def trade(pair, price):
                 }
                 cooldown[pair] = now
 
-                print(f"🟢 BUY {pair} | Preço: {price} | Valor: {trade_value} USDT | Capital: {round(capital,2)}")
+                print(f"🟢 BUY {pair} | Preço: {price} | Size: {size} | Valor: {trade_value} USDT | Capital: {round(capital,2)}")
                 send_message(
                     f"🟢 BUY {pair}\n"
                     f"━━━━━━━━━━━━━━━━━━\n"
                     f"Preço: {round(price, 6)}\n"
+                    f"Quantidade: {size}\n"
                     f"Valor: {trade_value} USDT\n"
                     f"💰 Capital restante: {round(capital, 2)} USDT\n"
                     f"📌 Posições: {positions_open()}/{MAX_POSITIONS}"
@@ -218,18 +240,21 @@ def trade(pair, price):
             peak     = pos["peak_price"]
             drawdown = (price - peak) / peak
             if drawdown <= -TRAILING_DISTANCE:
+                # ✅ SELL com a mesma quantidade do BUY
                 create_order(pair, "SELL", pos["size"])
                 close_position(pair, price, "TRAILING")
                 return
 
         # take profit fixo
         if profit >= TAKE_PROFIT:
+            # ✅ SELL com a mesma quantidade do BUY
             create_order(pair, "SELL", pos["size"])
             close_position(pair, price, "TP")
             return
 
         # stop loss fixo
         if profit <= STOP_LOSS:
+            # ✅ SELL com a mesma quantidade do BUY
             create_order(pair, "SELL", pos["size"])
             close_position(pair, price, "SL")
             return
