@@ -5,7 +5,7 @@ from exchange import create_order
 # ============================================================
 #  CONFIGURAÇÕES GERAIS
 # ============================================================
-capital          = 79.0
+capital          = 55.0
 trades           = 0
 wins             = 0
 losses           = 0
