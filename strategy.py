@@ -35,15 +35,17 @@ def trade(pair, price):
         return
 
 
+    # não abre nova posição se já tiver uma
+    if positions[pair] is not None:
+        return
+
+
     last_price = state[pair]["last_price"]
     trend_start = state[pair]["trend_start"]
 
     move = (price - trend_start) / trend_start
 
 
-    # =============================
-    # ENTRADA
-    # =============================
     if move > TREND_MOVE:
 
         pullback = price - last_price
@@ -51,16 +53,15 @@ def trade(pair, price):
         if pair in cooldown:
 
             if now - cooldown[pair] < COOLDOWN_TIME:
-
                 state[pair]["last_price"] = price
                 return
 
 
-        if pullback <= -PULLBACK and positions[pair] is None:
+        if pullback <= -PULLBACK:
 
             size = round(TRADE_VALUE / price, 6)
 
-            order = create_order(pair, "BUY", size)
+            order = create_order(pair, "BUY", TRADE_VALUE)
 
             if order is None:
                 send_message(f"❌ Falha ao comprar {pair}")
@@ -76,13 +77,10 @@ def trade(pair, price):
             send_message(
                 f"🟢 BUY {pair}\n"
                 f"Preço: {round(price,4)}\n"
-                f"Qtd: {size}"
+                f"Valor: {TRADE_VALUE} USDT"
             )
 
 
-    # =============================
-    # SAÍDA
-    # =============================
     if positions[pair] is not None:
 
         entry = positions[pair]["entry"]
@@ -91,7 +89,6 @@ def trade(pair, price):
         profit = (price - entry) / entry
 
 
-        # TAKE PROFIT
         if profit >= TAKE_PROFIT:
 
             order = create_order(pair, "SELL", size)
@@ -115,7 +112,6 @@ def trade(pair, price):
             )
 
 
-        # STOP LOSS
         elif profit <= STOP_LOSS:
 
             order = create_order(pair, "SELL", size)
